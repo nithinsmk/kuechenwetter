@@ -1,0 +1,107 @@
+:root {
+  --bg: #e4e4e2;
+  --ink: #1a1a1a;
+  --muted: #6b6b68;
+  --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font: 12px/1.4 var(--font);
+  overflow: hidden;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+}
+
+#stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  outline: none;
+}
+
+#scans {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  pointer-events: none;
+}
+
+#scans button {
+  pointer-events: auto;
+}
+
+button {
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+button:hover,
+button[aria-current="true"] {
+  color: var(--ink);
+}
+
+button[aria-current="true"] {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+#status {
+  position: fixed;
+  top: 50%;
+  left: 16px;
+  right: 16px;
+  margin: 0;
+  transform: translateY(-50%);
+  text-align: center;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+footer {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+footer p { margin: 0; }
+footer button {
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+#drop {
+  position: fixed;
+  inset: 8px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--muted);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  pointer-events: none;
+}
+
+[hidden] { display: none !important; }
