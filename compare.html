@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mesh / Splat</title>
+  <link rel="stylesheet" href="compare.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+        "@sparkjsdev/spark": "https://sparkjs.dev/releases/spark/2.2.0/spark.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main>
+    <section class="pane" id="mesh">
+      <div class="view"></div>
+      <header>
+        <h2>mesh <span>· GLTF</span></h2>
+        <button type="button" data-action="structure">show triangles</button>
+      </header>
+      <p class="status" role="status" hidden></p>
+      <footer>
+        <p class="caption">A surface of triangles with a photo wrapped over it. Crisp edges; the page can light it or restyle it. Shiny things tend to break into holes, because their reflections change from photo to photo.</p>
+        <p class="source"></p>
+      </footer>
+    </section>
+
+    <section class="pane" id="splat">
+      <div class="view"></div>
+      <header>
+        <h2>splat <span>· Splat PLY</span></h2>
+        <button type="button" data-action="flip">flip</button>
+      </header>
+      <p class="status" role="status" hidden></p>
+      <footer>
+        <p class="caption">Many thousands of soft, see-through blobs, whose colour can shift with the angle. Keeps shine and softness. Edges blur and stray blobs float; zoom in close to see them.</p>
+        <p class="source"></p>
+      </footer>
+    </section>
+  </main>
+
+  <p id="note">The two samples are different objects. For a fair comparison, export one of your scans as both GLTF and Splat PLY and drop the files onto this page.</p>
+
+  <div id="drop" hidden>drop a GLTF export (.glb, or .gltf with its files) or a Splat PLY</div>
+
+  <script type="module" src="compare.js"></script>
+</body>
+</html>

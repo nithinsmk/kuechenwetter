@@ -28,3 +28,8 @@ Add its name after `#`: `http://localhost:8770/#2026-09-28`.
 
 Every working prototype is tagged in git and listed in `CHANGELOG.md`.
 To look at an older one: `git checkout v0.1`. To come back: `git checkout main`.
+
+## Compare mesh and splat
+
+`http://localhost:8770/compare.html` shows a GLTF mesh and a Splat PLY side by side.
+Drop your own exports onto it: a `.glb` (or a `.gltf` together with its `.bin` and textures) and a `.ply`.
