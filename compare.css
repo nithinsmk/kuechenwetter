@@ -73,8 +73,20 @@ header {
   top: 12px;
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 12px;
+}
+
+header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+}
+
+button[aria-current="true"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 footer { bottom: 12px; }
@@ -102,8 +114,6 @@ h2 span,
   .caption { display: none; }
 }
 
-.source { margin: 0; }
-.source a { color: inherit; pointer-events: auto; }
 
 button {
   pointer-events: auto;
@@ -150,3 +160,16 @@ button[aria-pressed="true"] { color: var(--ink); }
 }
 
 [hidden] { display: none !important; }
+
+/* Keep interface text readable over busy scans. */
+h2,
+header nav button,
+[data-action],
+.caption,
+.status {
+  width: fit-content;
+  padding: 2px 5px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+}
+
+.status { margin: 0 auto; }

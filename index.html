@@ -8,8 +8,9 @@
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+        "@sparkjsdev/spark": "https://sparkjs.dev/releases/spark/2.2.0/spark.module.js"
       }
     }
   </script>
@@ -17,7 +18,10 @@
 <body>
   <main id="stage" aria-label="3D scan viewer"></main>
 
-  <nav id="scans" aria-label="Scans"></nav>
+  <div id="top">
+    <nav id="scans" aria-label="Scans"></nav>
+    <p id="info"></p>
+  </div>
 
   <p id="status" role="status" hidden></p>
 
@@ -26,7 +30,7 @@
     <button id="reset" type="button">reset view</button>
   </footer>
 
-  <div id="drop" hidden>drop a .glb to view it</div>
+  <div id="drop" hidden>drop a .glb or .ply to view it</div>
 
   <script type="module" src="viewer.js"></script>
 </body>

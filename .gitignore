@@ -1,1 +1,6 @@
 .DS_Store
+
+# Scan files are large and never change; git tracks the code and scans.json only.
+scans/*.glb
+scans/*.ply
+scans/*.spz

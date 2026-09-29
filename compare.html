@@ -20,31 +20,35 @@
     <section class="pane" id="mesh">
       <div class="view"></div>
       <header>
-        <h2>mesh <span>· GLTF</span></h2>
+        <div>
+          <h2>mesh <span>· GLTF<span class="count"></span></span></h2>
+          <nav aria-label="Mesh scans"></nav>
+        </div>
         <button type="button" data-action="structure">show triangles</button>
       </header>
       <p class="status" role="status" hidden></p>
       <footer>
-        <p class="caption">A surface of triangles with a photo wrapped over it. Crisp edges; the page can light it or restyle it. Shiny things tend to break into holes, because their reflections change from photo to photo.</p>
-        <p class="source"></p>
+        <p class="caption">A surface of triangles with photos wrapped over it. Crisp edges; the page can light it or restyle it. Shiny things tend to break into holes, because their reflections change from photo to photo.</p>
       </footer>
     </section>
 
     <section class="pane" id="splat">
       <div class="view"></div>
       <header>
-        <h2>splat <span>· Splat PLY</span></h2>
+        <div>
+          <h2>splat <span>· Splat PLY<span class="count"></span></span></h2>
+          <nav aria-label="Splat scans"></nav>
+        </div>
         <button type="button" data-action="flip">flip</button>
       </header>
       <p class="status" role="status" hidden></p>
       <footer>
-        <p class="caption">Many thousands of soft, see-through blobs, whose colour can shift with the angle. Keeps shine and softness. Edges blur and stray blobs float; zoom in close to see them.</p>
-        <p class="source"></p>
+        <p class="caption">Hundreds of thousands of soft, see-through blobs. Polycam gives each blob one colour, so shine stays where it was photographed rather than moving as you turn. Edges blur and stray blobs float; zoom in close to see them.</p>
       </footer>
     </section>
   </main>
 
-  <p id="note">The two samples are different objects. For a fair comparison, export one of your scans as both GLTF and Splat PLY and drop the files onto this page.</p>
+  <p id="note">Your scans. Pick one on each side; drop other exports onto the page to compare them.</p>
 
   <div id="drop" hidden>drop a GLTF export (.glb, or .gltf with its files) or a Splat PLY</div>
 

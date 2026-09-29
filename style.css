@@ -29,11 +29,18 @@ html, body {
   outline: none;
 }
 
-#scans {
+#top {
   position: fixed;
   top: max(16px, env(safe-area-inset-top));
   left: 16px;
   right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+#scans {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
@@ -61,6 +68,12 @@ button[aria-current="true"] {
 button[aria-current="true"] {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+#info {
+  margin: 0;
+  color: var(--muted);
+  pointer-events: none;
 }
 
 #status {
@@ -105,3 +118,16 @@ footer button {
 }
 
 [hidden] { display: none !important; }
+
+/* Keep interface text readable over busy scans. */
+#scans button,
+#info,
+#hint,
+#reset,
+#status {
+  width: fit-content;
+  padding: 2px 5px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+}
+
+#status { margin: 0 auto; }
