@@ -290,6 +290,8 @@ window.addEventListener('pagehide', () => channel.untrack());
 
 channel
   .on('presence', { event: 'sync' }, renderWeathers)
+  // The keeper changed the song list: everyone reloads at once and stays in sync.
+  .on('broadcast', { event: 'tracks' }, () => loadTracks().then(tune).catch(console.error))
   .subscribe((status) => {
     // After a dropped connection (a locked phone), claim the weather again.
     // A fresh timestamp means anyone who took it in the meantime keeps it.

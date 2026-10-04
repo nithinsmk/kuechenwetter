@@ -4,6 +4,7 @@
     python3 radio/keeper.py tracks              what the radio plays
     python3 radio/keeper.py add FILE --artist A --title T [--part N] [--today]
                                                 upload an audio file and put it in the rotation
+    python3 radio/keeper.py today ID            put an already-added track on air straight away
     python3 radio/keeper.py done ID [ID ...]    tick requests off
     python3 radio/keeper.py remove ID           take a track out of the rotation (and delete its file)
 
@@ -93,6 +94,24 @@ def berlin_midnight(day_offset=0):
     return midnight.astimezone(dt.timezone.utc)
 
 
+def just_before_midnight():
+    return (berlin_midnight() - dt.timedelta(minutes=1)).isoformat()
+
+
+def track_by_prefix(prefix):
+    rows = call('GET', '/rest/v1/tracks?select=id,file,artist,title')
+    match = [r for r in rows or [] if r['id'].startswith(prefix)]
+    if len(match) != 1:
+        sys.exit('no single track matches that id')
+    return match[0]
+
+
+def notify_listeners():
+    """Tell every open radio to reload the song list now, so everyone stays in sync."""
+    call('POST', '/realtime/v1/api/broadcast',
+         {'messages': [{'topic': 'kuechenwetter', 'event': 'tracks', 'payload': {}}]})
+
+
 # --- commands ---
 
 def cmd_requests(_):
@@ -130,8 +149,10 @@ def cmd_add(args):
 
     row = {'artist': args.artist, 'title': args.title, 'part': args.part, 'file': name, 'seconds': seconds}
     if args.today:
-        row['added_at'] = (berlin_midnight() - dt.timedelta(minutes=1)).isoformat()
+        row['added_at'] = just_before_midnight()
     call('POST', '/rest/v1/tracks', row, {'Prefer': 'return=minimal'})
+    if args.today:
+        notify_listeners()
     print(f"added {args.artist} – {args.title} ({seconds:.0f} s) as {name}; "
           f"{'on air today' if args.today else 'on air from the next midnight'}")
 
@@ -154,14 +175,19 @@ def cmd_done(args):
         print('done', short)
 
 
+def cmd_today(args):
+    track = track_by_prefix(args.id)
+    call('PATCH', f"/rest/v1/tracks?id=eq.{track['id']}", {'added_at': just_before_midnight()},
+         {'Prefer': 'return=minimal'})
+    notify_listeners()
+    print(f"{track['artist']} – {track['title']} is on air today")
+
+
 def cmd_remove(args):
-    rows = call('GET', f'/rest/v1/tracks?select=id,file,artist,title')
-    match = [r for r in rows if r['id'].startswith(args.id)]
-    if len(match) != 1:
-        sys.exit('no single track matches that id')
-    track = match[0]
+    track = track_by_prefix(args.id)
     call('DELETE', f"/rest/v1/tracks?id=eq.{track['id']}", headers={'Prefer': 'return=minimal'})
     call('DELETE', f'/storage/v1/object/{BUCKET}', {'prefixes': [track['file']]})
+    notify_listeners()
     print(f"removed {track['artist']} – {track['title']}")
 
 
@@ -177,6 +203,9 @@ def main():
     add.add_argument('--part', type=int, default=1)
     add.add_argument('--today', action='store_true', help='air straight away instead of from the next midnight')
     add.set_defaults(run=cmd_add)
+    today = sub.add_parser('today')
+    today.add_argument('id')
+    today.set_defaults(run=cmd_today)
     done = sub.add_parser('done')
     done.add_argument('ids', nargs='+')
     done.set_defaults(run=cmd_done)
