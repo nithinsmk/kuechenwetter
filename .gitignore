@@ -1,6 +1,10 @@
 .DS_Store
 
-# Scan files are large and never change; git tracks the code and scans.json only.
+# Raw scans are large and never change; only the compact .spz copies the site uses go in git.
 scans/*.glb
 scans/*.ply
-scans/*.spz
+!scans/*.spz
+
+# Radio audio and secrets never go in the public repo.
+radio-inbox/
+.env

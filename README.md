@@ -1,6 +1,36 @@
 # drainer
 
-A web page for viewing the 3D scans of the kitchen drainer (Site-responsive Sound, UdK Berlin, 2026).
+Küchenwetter: a private radio for one kitchen, over 3D scans of its dish drainer
+(Site-responsive Sound, UdK Berlin, 2026). `index.html` is the station; `viewer.html` and
+`compare.html` are the earlier scan tools.
+
+## The radio
+
+- Everyone hears the same song at the same moment. The day's order is a shuffle seeded with the
+  Berlin date, built from every track added before that midnight, and looped all day.
+- Five weather names are claimed per visit (Supabase Realtime presence); the sixth visitor waits.
+- Requests go into a table nobody can read back except the keeper.
+- Backend: Supabase. `supabase/setup.sql` makes the tables, rules and the `radio` audio folder.
+  Secrets live in `.env` (not in git); `config.js` holds only the public address and publishable key.
+
+## The keeper's desk
+
+```
+python3 radio/keeper.py requests
+python3 radio/keeper.py add radio-inbox/song.mp3 --artist "…" --title "…"        # airs from next midnight
+python3 radio/keeper.py add radio-inbox/song.mp3 --artist "…" --title "…" --today
+python3 radio/keeper.py done <request id>
+python3 radio/keeper.py tracks
+```
+
+## Scans for the radio
+
+`scans/series.json` lists the scans the radio shows, with where to point the camera. Each is a
+Polycam Splat PLY converted to `.spz` and turned upright:
+
+```
+npx @playcanvas/splat-transform in.ply -r 180,0,0 --spz-version 3 out.spz
+```
 
 ## Run it on your Mac
 

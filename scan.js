@@ -29,7 +29,10 @@ export async function listScans() {
 
 // --- a canvas with a camera and orbit controls that can show meshes and splats ---
 
-export function createStage(container) {
+// options.fit: 'both' fits the whole object on screen; 'fill' lets it crop at the sides of
+// a portrait screen, keeping the camera close (useful for splats with loose blobs around them).
+export function createStage(container, options = {}) {
+  const fit = options.fit ?? 'both';
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.appendChild(renderer.domElement);
@@ -55,7 +58,9 @@ export function createStage(container) {
   new ResizeObserver(resize).observe(container);
   resize();
 
-  renderer.setAnimationLoop(() => {
+  let onFrame = null;
+  renderer.setAnimationLoop((time) => {
+    onFrame?.(time);
     controls.update();
     renderer.render(scene, camera);
   });
@@ -77,11 +82,16 @@ export function createStage(container) {
     if (current) { scene.remove(current); disposeScan(current); }
     current = object;
     scene.add(object);
-    frame(camera, controls, boundsOf(object));
+    frame(camera, controls, boundsOf(object), fit);
     return object;
   }
 
-  return { renderer, scene, camera, controls, show, reset: () => controls.reset(), get current() { return current; } };
+  return {
+    renderer, scene, camera, controls, show,
+    reset: () => controls.reset(),
+    get current() { return current; },
+    set onFrame(fn) { onFrame = fn; }, // called every frame, before the controls update
+  };
 }
 
 // --- loading ---
@@ -90,9 +100,14 @@ const gltfLoader = (manager) => new GLTFLoader(manager)
   .setDRACOLoader(new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/libs/draco/gltf/'))
   .setMeshoptDecoder(MeshoptDecoder);
 
-// source: { url, name, files? } where files maps a .gltf's relative file names to URLs.
-export async function loadScan({ url, name, files = {} }, onProgress) {
-  if (isSplatFile(name)) return makeSplat(await fetchBytes(url, onProgress));
+// source: { url, name, files?, focus? } where files maps a .gltf's relative file names to URLs,
+// and focus ({ center: [x, y, z], radius }) says where to point the camera.
+export async function loadScan({ url, name, files = {}, focus }, onProgress) {
+  if (isSplatFile(name)) {
+    const splat = await makeSplat(await fetchBytes(url, onProgress));
+    if (focus) splat.userData.focus = new THREE.Sphere(new THREE.Vector3(...focus.center), focus.radius);
+    return splat;
+  }
 
   const manager = new THREE.LoadingManager();
   manager.setURLModifier((u) => files[fileName(u)] || u);
@@ -190,13 +205,15 @@ export function describe(object) {
 }
 
 // Point the camera at the whole thing, from slightly above.
-export function frame(camera, controls, sphere) {
+export function frame(camera, controls, sphere, fit = 'both') {
   const center = sphere.center.clone();
   const radius = sphere.radius || 1;
-  // Fit whichever is narrower, so it also fits a portrait phone screen.
+  // Fit whichever is narrower, so it also fits a portrait phone screen,
+  // or with 'fill', don't pull back further than 60% of the height would need.
   const vFov = THREE.MathUtils.degToRad(camera.fov);
   const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-  const distance = radius / Math.sin(Math.min(vFov, hFov) / 2) * 1.1;
+  const fov = fit === 'fill' ? Math.max(hFov, vFov * 0.6) : Math.min(vFov, hFov);
+  const distance = radius / Math.sin(fov / 2) * 1.1;
 
   camera.near = radius / 200;
   camera.far = radius * 200;

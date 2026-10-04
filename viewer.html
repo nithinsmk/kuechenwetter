@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Scans</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+        "@sparkjsdev/spark": "https://sparkjs.dev/releases/spark/2.2.0/spark.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="stage" aria-label="3D scan viewer"></main>
+
+  <div id="top">
+    <nav id="scans" aria-label="Scans"></nav>
+    <p id="info"></p>
+  </div>
+
+  <p id="status" role="status" hidden></p>
+
+  <footer>
+    <p id="hint"></p>
+    <button id="reset" type="button">reset view</button>
+  </footer>
+
+  <div id="drop" hidden>drop a .glb or .ply to view it</div>
+
+  <script type="module" src="viewer.js"></script>
+</body>
+</html>

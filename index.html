@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Scans</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="robots" content="noindex">
+  <title>Küchenwetter</title>
+  <link rel="stylesheet" href="radio.css">
   <script type="importmap">
     {
       "imports": {
@@ -16,22 +17,65 @@
   </script>
 </head>
 <body>
-  <main id="stage" aria-label="3D scan viewer"></main>
+  <main id="stage" aria-label="3D scan of the dish drainer"></main>
 
-  <div id="top">
-    <nav id="scans" aria-label="Scans"></nav>
-    <p id="info"></p>
-  </div>
+  <header id="station">
+    <h1>Küchenwetter</h1>
+    <p id="onair">tuning in…</p>
+    <p id="listeners" aria-live="polite"></p>
+    <p id="status" role="status" hidden></p>
+  </header>
 
-  <p id="status" role="status" hidden></p>
+  <section id="threshold" aria-labelledby="choose">
+    <h2 id="choose">choose your weather</h2>
+    <div id="weathers"></div>
+    <p id="outside" hidden>all five weathers are in the kitchen.<br>wait here; one will clear.</p>
+    <p id="notice" role="status" hidden></p>
+  </section>
 
   <footer>
-    <p id="hint"></p>
-    <button id="reset" type="button">reset view</button>
+    <form id="request" hidden>
+      <label for="song">request a song</label>
+      <div class="row">
+        <input id="song" name="song" maxlength="200" placeholder="artist – song" autocomplete="off" required>
+        <button type="submit">send</button>
+      </div>
+      <p id="sent" role="status" hidden></p>
+    </form>
+    <div class="row">
+      <nav id="dates" aria-label="Scans by date"></nav>
+      <div class="links">
+        <button type="button" id="about-open">about</button>
+        <button type="button" id="leave" hidden>leave the kitchen</button>
+      </div>
+    </div>
   </footer>
 
-  <div id="drop" hidden>drop a .glb or .ply to view it</div>
+  <dialog id="about" aria-labelledby="about-title">
+    <h2 id="about-title">Küchenwetter</h2>
+    <p>A radio station for one kitchen. Everyone listening hears the same song at the same moment. The programme is reshuffled every midnight. Requests air the next day, if they air at all.</p>
+    <p>There are five weathers. When all five are in the kitchen, the sixth waits outside.</p>
 
-  <script type="module" src="viewer.js"></script>
+    <h2>Nazif Limpio Saaf</h2>
+    <p>Nazif Limpio Saaf is a composite artist. The name means "clean" in three languages, which is two more than necessary and still not quite enough.</p>
+    <p>Saaf lives and works in a shared kitchen in Berlin, in a language nobody in the house grew up with: mostly English, some German, a lot of pointing.</p>
+    <p>Saaf's medium is the dish drainer, an accidental collective sculpture remade every two days by everyone who washes up. Saaf doesn't make the sculptures. Saaf scans them.</p>
+
+    <h2>Works</h2>
+    <ul id="works">
+      <li>
+        <button type="button" data-date="2026-09-25">Grater, Leaning Out of the Conversation</button>
+        <span>25.09.2026 · steel, plastic, wood, water, time · collection of the kitchen</span>
+      </li>
+      <li>
+        <button type="button" data-date="2026-09-28">Ladle Raises Its Hand</button>
+        <span>28.09.2026 · steel, wood, water, time · collection of the kitchen</span>
+      </li>
+    </ul>
+
+    <form method="dialog"><button>close</button></form>
+  </dialog>
+
+  <script type="module" src="radio.js"></script>
 </body>
 </html>
