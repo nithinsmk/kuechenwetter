@@ -135,6 +135,12 @@ def cmd_add(args):
     print(f"added {args.artist} – {args.title} ({seconds:.0f} s) as {name}; "
           f"{'on air today' if args.today else 'on air from the next midnight'}")
 
+    # Move it out of the inbox, so the inbox only shows what's still waiting.
+    inbox = ROOT / 'radio-inbox'
+    if path.resolve().parent == inbox.resolve():
+        (inbox / 'added').mkdir(exist_ok=True)
+        path.rename(inbox / 'added' / path.name)
+
 
 def cmd_done(args):
     open_ids = [row['id'] for row in call('GET', '/rest/v1/requests?select=id&done_at=is.null') or []]
