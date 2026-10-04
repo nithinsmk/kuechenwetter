@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Küchenwetter label</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+
+    :root { --ink: #1a1a1a; --muted: #6b6b68; --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px 16px;
+      background: #e4e4e2;
+      color: var(--ink);
+      font: 10pt/1.4 var(--font);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .hint { color: var(--muted); max-width: 70mm; text-align: center; }
+
+    /* The label, at its real printed size. The dashed line is where to cut. */
+    .label {
+      width: 70mm;
+      padding: 7mm 7mm 6mm;
+      background: #fff;
+      outline: 0.3mm dashed var(--muted);
+      outline-offset: 2mm;
+      display: flex;
+      flex-direction: column;
+      gap: 3mm;
+    }
+
+    .label h1 { margin: 0; font-size: 13pt; letter-spacing: 0.02em; }
+    .label .wip { margin: 0; text-transform: uppercase; letter-spacing: 0.12em; font-size: 8pt; }
+    .label img { width: 100%; display: block; image-rendering: pixelated; }
+    .label p { margin: 0; }
+    .label .small { color: var(--muted); font-size: 8pt; }
+
+    @media print {
+      body { background: none; padding: 0; }
+      .hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <p class="hint">Print at 100% (no "fit to page"), cut along the dashed line, and cover it in clear tape or laminate it before it goes on the drainer.</p>
+
+  <div class="label">
+    <h1>Küchenwetter</h1>
+    <p class="wip">work in progress</p>
+    <img src="qr.svg" alt="QR code for the Küchenwetter radio">
+    <p>a radio for this kitchen.<br>scan to tune in.</p>
+    <p class="small">Nazif Limpio Saaf, 2026–</p>
+  </div>
+</body>
+</html>

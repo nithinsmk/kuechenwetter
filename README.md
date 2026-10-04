@@ -1,7 +1,8 @@
 # drainer
 
 Küchenwetter: a private radio for one kitchen, over 3D scans of its dish drainer
-(Site-responsive Sound, UdK Berlin, 2026). `index.html` is the station; `viewer.html` and
+(Site-responsive Sound, UdK Berlin, 2026). Live at https://nithinsmk.github.io/kuechenwetter/ (GitHub Pages, built from `main`).
+`index.html` is the station; `label.html` is the printable QR label; `viewer.html` and
 `compare.html` are the earlier scan tools.
 
 ## The radio
