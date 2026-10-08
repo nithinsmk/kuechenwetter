@@ -11,3 +11,4 @@ radio-inbox/
 
 # Images for the seminar documentation (not part of the site)
 documentation/
+__pycache__/
