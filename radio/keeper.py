@@ -5,7 +5,7 @@
     python3 radio/keeper.py add FILE --artist A --title T [--part N] [--today]
                                                 upload an audio file and put it in the rotation
     python3 radio/keeper.py add-mix FOLDER --title T [--today]
-                                                upload a folder of songs as one mixtape by Nazif Limpio Saaf,
+                                                upload a folder of songs as one mixtape by نظيفة,
                                                 in file-name order; files are named "01 Artist - Song.mp3"
     python3 radio/keeper.py today ID            put an already-added track on air straight away
     python3 radio/keeper.py done ID [ID ...]    tick requests off
@@ -175,7 +175,7 @@ def cmd_add(args):
 
 
 def cmd_add_mix(args):
-    """A folder of songs, in file-name order, as one mixtape show by Nazif Limpio Saaf."""
+    """A folder of songs, in file-name order, as one mixtape show by نظيفة."""
     folder = pathlib.Path(args.folder).expanduser()
     files = sorted(p for p in folder.iterdir() if p.suffix.lower() in TYPES)
     if not files:
@@ -187,7 +187,7 @@ def cmd_add_mix(args):
         artist, _, song = stem.partition(' - ')
         songs.append((path, f'{artist.strip()} – {song.strip()}' if song else stem.strip()))
     for part, (path, credit) in enumerate(songs, start=1):
-        upload_track(path, 'Nazif Limpio Saaf', f'{args.title} · {credit}', part, args.today)
+        upload_track(path, 'نظيفة', f'{args.title} · {credit}', part, args.today)
     if args.today:
         notify_listeners()
     print(f"mixtape '{args.title}': {len(songs)} songs, "
