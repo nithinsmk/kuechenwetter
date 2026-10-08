@@ -20,6 +20,7 @@ Küchenwetter: a private radio for one kitchen, over 3D scans of its dish draine
 python3 radio/keeper.py requests
 python3 radio/keeper.py add radio-inbox/song.mp3 --artist "…" --title "…"        # airs from next midnight
 python3 radio/keeper.py add radio-inbox/song.mp3 --artist "…" --title "…" --today
+python3 radio/keeper.py add-mix radio-inbox/mixtape --title "…"                   # files named "01 Artist - Song.mp3", played in order
 python3 radio/keeper.py today <track id>                                          # an added track, on air now
 python3 radio/keeper.py done <request id>
 python3 radio/keeper.py tracks

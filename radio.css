@@ -246,3 +246,8 @@ dialog form {
 
 dialog form button { color: var(--muted); }
 dialog form button:hover { color: var(--ink); }
+
+/* ?clean: the scan alone, for documentation photos */
+body.clean #station,
+body.clean #threshold,
+body.clean footer { display: none !important; }

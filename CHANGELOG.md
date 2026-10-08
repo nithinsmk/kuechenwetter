@@ -4,6 +4,7 @@ Each working prototype is a git tag. Newest first.
 
 | Version | Date | What it does |
 | --- | --- | --- |
+| v0.8 | 2026-10-08 | Ready for the mixtape: `keeper.py add-mix FOLDER --title T` adds a folder of songs as one show by Nazif Limpio Saaf that plays in order, each song named on air. The label now suits the fridge ("the sculpture is drying in the rack"). `?scan=2026-09-25` opens a date and `?clean` hides the interface, for documentation images. |
 | v0.7 | 2026-10-04 | Songs can go on air the same day without breaking sync: `keeper.py today ID` (or `add … --today`) pings every open radio, which reloads the song list at once. |
 | v0.6 | 2026-10-04 | Published at https://nithinsmk.github.io/kuechenwetter/ (repo nithinsmk/kuechenwetter, commits under GitHub's private email). Adds `label.html`, a printable QR label ("work in progress") pointing to it. |
 | v0.5 | 2026-10-04 | Küchenwetter, the radio. `index.html` is now the station: one shuffled broadcast in sync for everyone (reshuffled at Berlin midnight), five weather names claimed per session (the sixth waits outside), an anonymous request box, and the scans swaying behind it (25.09 and 28.09 as compact .spz). About box with Nazif Limpio Saaf and the works. Backend on Supabase (`supabase/setup.sql`); `radio/keeper.py` uploads songs and reads requests. The old viewer is `viewer.html`. |

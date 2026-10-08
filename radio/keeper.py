@@ -4,6 +4,9 @@
     python3 radio/keeper.py tracks              what the radio plays
     python3 radio/keeper.py add FILE --artist A --title T [--part N] [--today]
                                                 upload an audio file and put it in the rotation
+    python3 radio/keeper.py add-mix FOLDER --title T [--today]
+                                                upload a folder of songs as one mixtape by Nazif Limpio Saaf,
+                                                in file-name order; files are named "01 Artist - Song.mp3"
     python3 radio/keeper.py today ID            put an already-added track on air straight away
     python3 radio/keeper.py done ID [ID ...]    tick requests off
     python3 radio/keeper.py remove ID           take a track out of the rotation (and delete its file)
@@ -134,33 +137,63 @@ def cmd_tracks(_):
               f"{int(row['seconds'] // 60)}:{int(row['seconds'] % 60):02d}  added {airs:%d %b %H:%M}")
 
 
-def cmd_add(args):
-    path = pathlib.Path(args.file).expanduser()
-    content_type = TYPES.get(path.suffix.lower())
-    if not path.exists() or not content_type:
-        sys.exit(f'need an existing {"/".join(TYPES)} file')
+def check_audio(path):
+    if not path.exists() or path.suffix.lower() not in TYPES:
+        sys.exit(f'{path.name}: need an existing {"/".join(TYPES)} file')
     if path.stat().st_size > 50 * 1024 * 1024:
         sys.exit(f'{path.name} is over the 50 MB limit; split or re-encode it first')
 
-    seconds = seconds_of(path)
-    name = f'{slug(args.artist)}-{slug(args.title)}-{args.part}-{secrets.token_hex(3)}{path.suffix.lower()}'
-    call('POST', f'/storage/v1/object/{BUCKET}/{urllib.parse.quote(name)}', path.read_bytes(),
-         {'Content-Type': content_type, 'x-upsert': 'false'})
 
-    row = {'artist': args.artist, 'title': args.title, 'part': args.part, 'file': name, 'seconds': seconds}
-    if args.today:
+def upload_track(path, artist, title, part, today):
+    seconds = seconds_of(path)
+    name = f'{slug(artist)}-{slug(title)}-{part}-{secrets.token_hex(3)}{path.suffix.lower()}'
+    call('POST', f'/storage/v1/object/{BUCKET}/{urllib.parse.quote(name)}', path.read_bytes(),
+         {'Content-Type': TYPES[path.suffix.lower()], 'x-upsert': 'false'})
+    row = {'artist': artist, 'title': title, 'part': part, 'file': name, 'seconds': seconds}
+    if today:
         row['added_at'] = just_before_midnight()
     call('POST', '/rest/v1/tracks', row, {'Prefer': 'return=minimal'})
-    if args.today:
-        notify_listeners()
-    print(f"added {args.artist} – {args.title} ({seconds:.0f} s) as {name}; "
-          f"{'on air today' if args.today else 'on air from the next midnight'}")
+    print(f"added {artist} – {title} ({seconds:.0f} s)")
 
-    # Move it out of the inbox, so the inbox only shows what's still waiting.
-    inbox = ROOT / 'radio-inbox'
-    if path.resolve().parent == inbox.resolve():
+
+def move_to_added(path):
+    """Move a file out of the inbox, so the inbox only shows what's still waiting."""
+    inbox = (ROOT / 'radio-inbox').resolve()
+    if inbox in path.resolve().parents:
         (inbox / 'added').mkdir(exist_ok=True)
         path.rename(inbox / 'added' / path.name)
+
+
+def cmd_add(args):
+    path = pathlib.Path(args.file).expanduser()
+    check_audio(path)
+    upload_track(path, args.artist, args.title, args.part, args.today)
+    if args.today:
+        notify_listeners()
+    print('on air today' if args.today else 'on air from the next midnight')
+    move_to_added(path)
+
+
+def cmd_add_mix(args):
+    """A folder of songs, in file-name order, as one mixtape show by Nazif Limpio Saaf."""
+    folder = pathlib.Path(args.folder).expanduser()
+    files = sorted(p for p in folder.iterdir() if p.suffix.lower() in TYPES)
+    if not files:
+        sys.exit(f'no audio files in {folder}')
+    songs = []
+    for path in files:
+        check_audio(path)
+        stem = re.sub(r'^\s*\d+[\s._-]*', '', path.stem)  # drop a leading "01 " / "01_" / "01 - "
+        artist, _, song = stem.partition(' - ')
+        songs.append((path, f'{artist.strip()} – {song.strip()}' if song else stem.strip()))
+    for part, (path, credit) in enumerate(songs, start=1):
+        upload_track(path, 'Nazif Limpio Saaf', f'{args.title} · {credit}', part, args.today)
+    if args.today:
+        notify_listeners()
+    print(f"mixtape '{args.title}': {len(songs)} songs, "
+          f"{'on air today' if args.today else 'on air from the next midnight'}")
+    for path, _ in songs:
+        move_to_added(path)
 
 
 def cmd_done(args):
@@ -203,6 +236,11 @@ def main():
     add.add_argument('--part', type=int, default=1)
     add.add_argument('--today', action='store_true', help='air straight away instead of from the next midnight')
     add.set_defaults(run=cmd_add)
+    mix = sub.add_parser('add-mix')
+    mix.add_argument('folder')
+    mix.add_argument('--title', required=True)
+    mix.add_argument('--today', action='store_true')
+    mix.set_defaults(run=cmd_add_mix)
     today = sub.add_parser('today')
     today.add_argument('id')
     today.set_defaults(run=cmd_today)

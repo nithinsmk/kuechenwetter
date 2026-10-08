@@ -8,3 +8,6 @@ scans/*.ply
 # Radio audio and secrets never go in the public repo.
 radio-inbox/
 .env
+
+# Images for the seminar documentation (not part of the site)
+documentation/

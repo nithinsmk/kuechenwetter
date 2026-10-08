@@ -74,7 +74,9 @@ async function loadSeries() {
     button.addEventListener('click', () => showScan(item.date));
     $('dates').appendChild(button);
   }
-  showScan(series.at(-1)?.date); // the latest state of the drainer
+  // ?scan=2026-09-25 opens a particular date; otherwise the latest state of the drainer.
+  const wanted = new URLSearchParams(location.search).get('scan');
+  showScan(series.some((s) => s.date === wanted) ? wanted : series.at(-1)?.date);
 }
 
 // --- the broadcast: one shuffled day, the same for everyone, computed from the clock ---
@@ -112,13 +114,14 @@ let tracks = [];
 let schedule = null;
 
 // Everything uploaded before today's midnight, shuffled with the date as the seed.
-// Parts of one show (same artist and title) stay together, in order.
+// Parts of one show stay together, in order. A show is one artist and title; for a
+// mixtape the title is "Mixtape · Artist – Song", and the part before " · " names the show.
 function buildDay(now) {
   const start = berlinMidnight(now);
   const shows = new Map();
   for (const t of tracks) {
     if (Date.parse(t.added_at) >= start) continue;
-    const key = `${t.artist}\n${t.title}`;
+    const key = `${t.artist}\n${t.title.split(' · ')[0]}`;
     if (!shows.has(key)) shows.set(key, []);
     shows.get(key).push(t);
   }
@@ -331,8 +334,11 @@ for (const button of document.querySelectorAll('#works button')) {
 
 // --- start ---
 
+// ?clean hides the interface, for photographing the scans.
+if (new URLSearchParams(location.search).has('clean')) document.body.classList.add('clean');
+
 if (new URLSearchParams(location.search).has('debug')) {
-  window.kw = { audio, onAir: () => onAir(Date.now()), owners, get schedule() { return schedule; } };
+  window.kw = { audio, stage, onAir: () => onAir(Date.now()), owners, get schedule() { return schedule; } };
 }
 
 renderWeathers();
