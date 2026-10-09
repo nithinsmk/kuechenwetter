@@ -354,5 +354,7 @@ body.clean .wheel-corner { display: none !important; }
 
 .letter p + p { margin-top: 10px; }
 .signature { display: inline-block; margin-top: 4px; font-size: 22px; }
+.letter .ps { margin-top: 16px; }
+.letter a { color: inherit; text-underline-offset: 3px; }
 .radio-line { margin-top: 18px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--muted) 40%, transparent); color: var(--muted); }
 #work { color: var(--muted); }
