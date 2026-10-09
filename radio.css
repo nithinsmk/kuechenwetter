@@ -359,12 +359,36 @@ body.clean .wheel-corner { display: none !important; }
 .radio-line { margin-top: 18px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--muted) 40%, transparent); color: var(--muted); }
 #work { color: var(--muted); }
 
-/* the gallery link sits with "about", looking the same */
+/* the gallery link: a clear button, with little scanned things turning above it */
+.links { padding-top: 66px; align-items: flex-end; }
+
 #gallery-link {
+  position: relative;
   pointer-events: auto;
-  padding: 2px 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--ink);
   background: var(--chip);
-  color: var(--muted);
+  color: var(--ink);
   text-decoration: none;
 }
-#gallery-link:hover { color: var(--ink); }
+#gallery-link:hover,
+#gallery-link:focus-visible { background: var(--ink); color: var(--bg); outline: none; }
+
+#floaters { position: absolute; inset: 0; }
+.floater {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  margin-left: -30px;
+  background: var(--sheet) 0 0 / 720px 60px no-repeat;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+  animation: floater-turn var(--spin) steps(12) infinite, floater-bob var(--bob) ease-in-out var(--delay) infinite alternate;
+}
+@keyframes floater-turn { to { background-position: -720px 0; } }
+@keyframes floater-bob {
+  from { transform: translate(-2px, 2px) rotate(-5deg); }
+  to { transform: translate(2px, -7px) rotate(5deg); }
+}
+@media (prefers-reduced-motion: reduce) { .floater { animation: none; } }
+#dates { flex-wrap: nowrap; flex-shrink: 0; }
+.links { justify-content: flex-end; }

@@ -275,6 +275,21 @@ $('request').addEventListener('submit', async (event) => {
 
 $('about-open').addEventListener('click', () => $('about').showModal());
 
+// --- the gallery link: little turning versions of the cut-out things float above it ---
+// Each is a strip of 12 turns (sprites/NAME.webp, made with tools/sprites.html).
+
+async function floatTheGallery() {
+  const items = await fetch('scans/characters/characters.json', { cache: 'no-store' }).then((r) => r.json());
+  const spots = [[-8, -2], [20, 14], [48, -4], [76, 12], [104, -2]]; // % across the link, px above it
+  items.slice(0, spots.length).forEach((item, i) => {
+    const thing = document.createElement('i');
+    thing.className = 'floater';
+    thing.style.cssText = `--sheet: url("sprites/${item.name}.webp"); left: ${spots[i][0]}%; bottom: calc(100% + ${spots[i][1]}px);`
+      + `--spin: ${2.4 + i * 0.5}s; --bob: ${2.8 + (i % 3) * 0.8}s; --delay: -${i * 0.9}s;`;
+    $('floaters').append(thing);
+  });
+}
+
 // --- start ---
 
 // ?clean hides the interface, for photographing the scans.
@@ -285,5 +300,6 @@ if (new URLSearchParams(location.search).has('debug')) {
 }
 
 renderWeathers();
+floatTheGallery().catch(console.error);
 loadSeries().catch((error) => { console.error(error); show($('status'), "couldn't load the scans"); });
 loadTracks().then(tune).catch((error) => { console.error(error); show($('onair'), `${STATION} is off air`); });

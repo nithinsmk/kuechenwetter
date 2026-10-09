@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>sprite maker</title>
+  <!-- Renders each cut-out in scans/characters through 12 turns into one image strip
+       (sprites/NAME.webp) for the little things floating around the radio's gallery link.
+       Open with the drainer preview and tools/receive_images.py running; it saves into
+       documentation/, from where the strips are moved to sprites/. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+        "@sparkjsdev/spark": "https://sparkjs.dev/releases/spark/2.2.0/spark.module.js"
+      }
+    }
+  </script>
+  <style>body { margin: 0; background: #888; font: 13px monospace; } canvas { display: block; }</style>
+</head>
+<body>
+  <p id="log">making sprites…</p>
+  <script type="module">
+    import * as THREE from 'three';
+    import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
+
+    const FRAMES = 12;
+    const PX = 112; // each frame, square; shown at about 44 css px, so still sharp on phones
+    const log = (text) => { document.getElementById('log').textContent += `\n${text}`; };
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(1);
+    renderer.setSize(PX, PX);
+    renderer.setClearColor(0x000000, 0);
+    document.body.appendChild(renderer.domElement);
+    const scene = new THREE.Scene();
+    scene.add(new SparkRenderer({ renderer }));
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 20);
+
+    // Timers rather than animation frames, which stop while the browser pane is hidden.
+    const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+    async function waitFrames(n) {
+      for (let i = 0; i < n; i++) { renderer.render(scene, camera); await sleep(30); }
+    }
+
+    const items = await fetch('../scans/characters/characters.json', { cache: 'no-store' }).then((r) => r.json());
+    for (const item of items) {
+      const splat = new SplatMesh({ url: `../scans/characters/${item.file}` });
+      await splat.initialized;
+      scene.add(splat);
+      const fit = (item.radius * 1.4) / Math.sin(THREE.MathUtils.degToRad(20));
+      camera.position.set(0, item.radius * 0.25, fit);
+      camera.lookAt(0, 0, 0);
+
+      const sheet = document.createElement('canvas');
+      sheet.width = PX * FRAMES;
+      sheet.height = PX;
+      const ctx = sheet.getContext('2d');
+      for (let f = 0; f < FRAMES; f++) {
+        splat.rotation.y = (f / FRAMES) * Math.PI * 2;
+        await waitFrames(12); // let the splats re-sort for the new angle
+        renderer.render(scene, camera);
+        ctx.drawImage(renderer.domElement, f * PX, 0);
+      }
+      scene.remove(splat);
+      splat.dispose?.();
+
+      const blob = await new Promise((done) => sheet.toBlob(done, 'image/webp', 0.8));
+      const reply = await fetch(`http://localhost:8771/save?name=sprite-${item.name}`, { method: 'POST', body: blob });
+      log(`${item.name}: ${await reply.text()}`);
+    }
+    log('done');
+  </script>
+</body>
+</html>
