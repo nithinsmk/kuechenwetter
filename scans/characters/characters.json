@@ -9,11 +9,12 @@
       0.483
     ],
     "radius": 0.17,
-    "splats": 2200
+    "splats": 2200,
+    "title": "the pink stuff"
   },
   {
-    "name": "red-sponges",
-    "file": "red-sponges.spz",
+    "name": "sponges",
+    "file": "sponges.spz",
     "scan": "28_9_2026",
     "from": [
       -0.952,
@@ -21,11 +22,12 @@
       -0.426
     ],
     "radius": 0.12,
-    "splats": 875
+    "splats": 875,
+    "title": "sponges"
   },
   {
-    "name": "clear-bottle",
-    "file": "clear-bottle.spz",
+    "name": "hand-soap",
+    "file": "hand-soap.spz",
     "scan": "28_9_2026",
     "from": [
       -0.97,
@@ -33,11 +35,12 @@
       -0.783
     ],
     "radius": 0.14,
-    "splats": 782
+    "splats": 782,
+    "title": "hand soap"
   },
   {
-    "name": "yellow-bottle",
-    "file": "yellow-bottle.spz",
+    "name": "dish-soap",
+    "file": "dish-soap.spz",
     "scan": "28_9_2026",
     "from": [
       -1.041,
@@ -45,7 +48,8 @@
       -0.589
     ],
     "radius": 0.12,
-    "splats": 661
+    "splats": 661,
+    "title": "dish soap"
   },
   {
     "name": "kettle",
@@ -57,6 +61,7 @@
       1.265
     ],
     "radius": 0.22,
-    "splats": 1256
+    "splats": 1256,
+    "title": "the kettle"
   }
 ]

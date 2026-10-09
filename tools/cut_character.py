@@ -57,8 +57,9 @@ def main():
     # Remember where it came from, for the gallery's captions.
     listing = out.parent / 'characters.json'
     items = json.loads(listing.read_text()) if listing.exists() else []
+    title = next((i.get('title') for i in items if i['name'] == name), None) or name.replace('-', ' ')
     items = [i for i in items if i['name'] != name] + [{
-        'name': name, 'file': out.name, 'scan': pathlib.Path(source).stem,
+        'name': name, 'title': title, 'file': out.name, 'scan': pathlib.Path(source).stem,
         'from': [round(middle[0], 3), round(-middle[1], 3), round(-middle[2], 3)], 'radius': radius, 'splats': int(len(kept)),
     }]
     listing.write_text(json.dumps(items, indent=2) + '\n')
