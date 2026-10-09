@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Küchenwetter · gallery</title>
+  <link rel="stylesheet" href="radio.css">
+  <style>
+    #station { right: 16px; }
+    #tags { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    .tag {
+      position: absolute;
+      left: 0;
+      top: 0;
+      padding: 2px 6px;
+      background: var(--chip);
+      white-space: nowrap;
+      pointer-events: auto;
+      transition: opacity 0.4s ease;
+    }
+    .tag:hover { background: var(--ink); color: var(--bg); }
+    .tag.dim { opacity: 0.25 !important; }
+    #caption {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-start;
+    }
+    #caption > * { padding: 2px 6px; background: var(--chip); }
+    #caption-name { font-weight: 700; }
+    #caption-from { color: var(--muted); }
+    #back { color: var(--muted); }
+    #back:hover { color: var(--ink); }
+    .home { position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); padding: 2px 6px; background: var(--chip); color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--ink); }
+    body.clean #tags, body.clean #caption, body.clean .home { display: none !important; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+        "@sparkjsdev/spark": "https://sparkjs.dev/releases/spark/2.2.0/spark.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="stage" aria-label="Things from the kitchen scans, floating"></main>
+  <div id="tags"></div>
+
+  <header id="station">
+    <h1>Küchenwetter</h1>
+    <p>the gallery: things from the kitchen, cut out of the scans</p>
+    <p id="status" role="status">gathering things…</p>
+  </header>
+
+  <section id="caption" hidden aria-live="polite">
+    <p id="caption-name"></p>
+    <p id="caption-from"></p>
+    <button type="button" id="back">← all of them</button>
+  </section>
+
+  <a class="home" href="./">back to the radio</a>
+
+  <script type="module" src="gallery.js"></script>
+</body>
+</html>

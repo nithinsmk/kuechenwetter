@@ -1,0 +1,62 @@
+[
+  {
+    "name": "pink-stuff",
+    "file": "pink-stuff.spz",
+    "scan": "28_9_2026",
+    "from": [
+      -0.703,
+      0.849,
+      0.483
+    ],
+    "radius": 0.17,
+    "splats": 2200
+  },
+  {
+    "name": "red-sponges",
+    "file": "red-sponges.spz",
+    "scan": "28_9_2026",
+    "from": [
+      -0.952,
+      0.207,
+      -0.426
+    ],
+    "radius": 0.12,
+    "splats": 875
+  },
+  {
+    "name": "clear-bottle",
+    "file": "clear-bottle.spz",
+    "scan": "28_9_2026",
+    "from": [
+      -0.97,
+      0.178,
+      -0.783
+    ],
+    "radius": 0.14,
+    "splats": 782
+  },
+  {
+    "name": "yellow-bottle",
+    "file": "yellow-bottle.spz",
+    "scan": "28_9_2026",
+    "from": [
+      -1.041,
+      0.244,
+      -0.589
+    ],
+    "radius": 0.12,
+    "splats": 661
+  },
+  {
+    "name": "kettle",
+    "file": "kettle.spz",
+    "scan": "28_9_2026",
+    "from": [
+      0.645,
+      0.365,
+      1.265
+    ],
+    "radius": 0.22,
+    "splats": 1256
+  }
+]
