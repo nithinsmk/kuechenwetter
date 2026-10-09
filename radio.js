@@ -7,7 +7,7 @@ import { mountWheel } from './wheel.js';
 import { floatTheGallery } from './floaters.js';
 import { makeSalvia } from './salvia.js';
 import { buildHill } from './hill.js';
-import { crinkle, startPurr, stopPurr } from './sounds.js';
+import { crinkle, startPurr, stopPurr, hiss } from './sounds.js';
 
 const WEATHERS = ['fog_before_dawn', 'clearing_by_noon', 'showers_late_afternoon', 'humid_at_dusk', 'rain_after_midnight'];
 const STATION = 'Küchenwetter';
@@ -51,6 +51,7 @@ const salvia = makeSalvia({
   // Pet her ten times in a row and the kitchen gives way to the hill for a few minutes.
   onTenPets: () => { hillUntil = Date.now() + 4 * 60 * 1000; showHill(); },
   onPurring: (on) => (on ? startPurr() : stopPurr()),
+  onHiss: hiss,
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopPurr(); });
 
@@ -115,7 +116,7 @@ async function display(item, label) {
     if (!shown) return;
     show($('status'), '');
     crisp();
-    salvia.enter(shown, shown.userData.focus ?? new THREE.Sphere(new THREE.Vector3(...item.focus.center), item.focus.radius), item.plant);
+    salvia.enter(shown, shown.userData.focus ?? new THREE.Sphere(new THREE.Vector3(...item.focus.center), item.focus.radius), item.plant, item.ghost);
     startSway();
   } catch (error) {
     console.error(error);

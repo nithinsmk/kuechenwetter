@@ -101,3 +101,22 @@ export function stopPurr() {
   volume.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
   for (const node of nodes) node.stop(now + 0.9);
 }
+
+// A warning hiss: a breath of bright noise, swelling then cut off.
+export function hiss() {
+  const ac = audio();
+  const now = ac.currentTime;
+  const source = ac.createBufferSource();
+  source.buffer = noise;
+  const band = ac.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = 5200;
+  band.Q.value = 0.9;
+  const env = ac.createGain();
+  env.gain.setValueAtTime(0.0001, now);
+  env.gain.exponentialRampToValueAtTime(0.5, now + 0.08);
+  env.gain.setValueAtTime(0.5, now + 0.45);
+  env.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+  source.connect(band).connect(env).connect(ac.destination);
+  source.start(now, Math.random(), 0.75);
+}

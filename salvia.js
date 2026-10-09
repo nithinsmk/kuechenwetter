@@ -221,7 +221,7 @@ const BUILD = { splat: buildSplat, pixel: buildPixel, cartoon: buildCartoon };
 
 // --- the daemon ---
 
-export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
+export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss }) {
   const holder = new THREE.Group(); // her place in the world: ground position and heading
   holder.visible = false;
   scene.add(holder);
@@ -255,10 +255,11 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
   let ground = null; // { floor, size, holderAt, cells: [[x, z]], heights, grid, ... }
 
   let measuring = 0;
-  async function measure(object, focus, plant, tries = 0) {
+  async function measure(object, focus, plant, ghost, tries = 0) {
     const id = ++measuring;
     quiet();
     uproot();
+    if (reaper) { scene.remove(reaper.g); reaper = null; }
     ground = null;
     holder.visible = false;
     // Rays only hit a scan once it has been drawn, so wait for drawn frames (which also
@@ -284,7 +285,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
     }
     if (id !== measuring) return; // another scan took over meanwhile
     if (grid.size < 20) { // not drawn yet: try again shortly
-      if (tries < 10) setTimeout(() => measure(object, focus, plant, tries + 1), 1500);
+      if (tries < 10) setTimeout(() => measure(object, focus, plant, ghost, tries + 1), 1500);
       return;
     }
     const near = [...grid.entries()].map(([k, y]) => [k.split(',').map(Number), y]);
@@ -307,7 +308,11 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
     const plantCell = plant
       ? cells.reduce((best, cell) => (Math.hypot(cell[0] - plant[0], cell[1] - plant[2]) < Math.hypot(best[0] - plant[0], best[1] - plant[2]) ? cell : best))
       : null;
-    ground = { floor, size, holderAt, cells, plant, plantCell, grid, step, c };
+    // The dark figure to the left of the drainer (seen from some views): she's wary of it.
+    const ghostCell = ghost
+      ? cells.reduce((best, cell) => (Math.hypot(cell[0] - ghost[0], cell[1] - ghost[2]) < Math.hypot(best[0] - ghost[0], best[1] - ghost[2]) ? cell : best))
+      : null;
+    ground = { floor, size, holderAt, cells, plant, plantCell, grid, step, c, ghost, ghostCell };
     plantFor(`kitchen ${c.x.toFixed(2)} ${c.z.toFixed(2)}`);
     holder.scale.setScalar(size / CAT_HEIGHT);
     plan('away', 3000 + Math.random() * 4000);
@@ -380,7 +385,14 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
   function nextActivity() {
     const options = ['wander', 'wander', 'sniff', 'sniff', 'checkin', 'sleep', 'runaway'];
     if (ground.plantCell || garden?.plants.length) options.push('plant', 'plant', 'plant');
+    if (ground.ghostCell && ground.ghost) options.push('spook', 'ghostnap');
     switch (pick(options)) {
+      case 'spook': return walkTo(ground.ghostCell, false, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); });
+      case 'ghostnap': return walkTo(ground.ghostCell, false, () => {
+        say('*curls up by it*');
+        plan('sleep', 30000 + Math.random() * 20000, { reaper: true });
+        setTimeout(() => { if (state.reaper && state.name === 'sleep') summonReaper(); }, 6000);
+      });
       case 'wander': return walkTo(pick(ground.cells), false, nextActivity);
       case 'sniff': return walkTo(pick(ground.cells), false, () => { say('*sniff sniff*'); plan('sniff', 2500 + Math.random() * 2000); });
       case 'checkin': return walkTo(nearHolder(), false, () => { say(pick(['mrrp', 'mrrp?', '*checks in*'])); plan('sit', 4000 + Math.random() * 3000); });
@@ -404,6 +416,70 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
       ? near.reduce((a, b) => (Math.abs(b.d - want) < Math.abs(a.d - want) ? b : a)).cell
       : [plant.x, plant.z, plant.y];
     walkTo(spot, fast, () => { say(plant.words); plan('eat', 6000 + Math.random() * 3000, { plant, bite: 0, rear }); });
+  }
+
+  // The grim reaper: he comes up out of the figure, glides over and lies down beside her.
+  let reaper = null;
+  // 8-bit: a voxel figure in a few colours, front view, 12 blocks tall.
+  const REAPER = [
+    '....kkkk....', '...kkkkkk...', '...kffffk...', '...kfeefk...', '...kffffk...', '..kkkkkkkk..',
+    '.kkkkkkkkkk.', '.kkkkkkkkkkh', '.kkkkkkkkkkh', '..kkkkkkkk.h', '..kkkkkkkk.h', '.kkkkkkkkkkh',
+  ];
+  const REAPER_INK = { k: '#15131a', f: '#2a2630', e: '#9be36a', h: '#5a4632' };
+  function buildReaper() {
+    const g = new THREE.Group();
+    const unit = (ground.size * 1.5) / REAPER.length;
+    const blocks = [];
+    REAPER.forEach((row, y) => [...row].forEach((ch, x) => { if (REAPER_INK[ch]) blocks.push([x - 5.5, REAPER.length - 1 - y + 0.5, 0, REAPER_INK[ch]]); }));
+    // the scythe blade, out to the right of the handle
+    for (let x = 0; x < 4; x++) blocks.push([6.5 + x, 11.5 - x * 0.5, 0, '#c2c6cf']);
+    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1.2), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), blocks.length);
+    const m = new THREE.Matrix4(); const col = new THREE.Color();
+    blocks.forEach(([x, y, z, c], n) => { mesh.setMatrixAt(n, m.makeTranslation(x, y, z)); mesh.setColorAt(n, col.set(c)); });
+    mesh.scale.setScalar(unit);
+    g.add(mesh);
+    const sh = shadowBlob(ground.size * 0.6); sh.position.y = 0.01; g.add(sh);
+    g.userData.height = ground.size * 1.5;
+    return g;
+  }
+  function summonReaper() {
+    if (reaper || !ground?.ghost) return;
+    const g = buildReaper();
+    g.position.set(ground.ghost[0], heightAt(ground.ghost[0], ground.ghost[2]), ground.ghost[2]);
+    scene.add(g);
+    reaper = { g, born: performance.now(), phase: 'rise', lie: 0 };
+    say('…', 800);
+  }
+  function updateReaper(now, dt) {
+    const { g } = reaper;
+    const h = g.userData.height;
+    if (reaper.phase === 'rise') {
+      const k = Math.min(1, (now - reaper.born) / 2500);
+      g.position.y = heightAt(g.position.x, g.position.z) - h * (1 - k) * 1.1;
+      g.rotation.y += dt * 0.3;
+      if (k >= 1) { reaper.phase = 'glide'; }
+    } else if (reaper.phase === 'glide') {
+      const side = new THREE.Vector2(Math.cos(holder.rotation.y), -Math.sin(holder.rotation.y)).multiplyScalar(ground.size * 1.3);
+      const aim = new THREE.Vector2(holder.position.x + side.x, holder.position.z + side.y);
+      const here = new THREE.Vector2(g.position.x, g.position.z);
+      const to = aim.clone().sub(here);
+      if (to.length() < ground.size * 0.2 || state.name !== 'sleep') reaper.phase = 'lie';
+      else {
+        here.add(to.normalize().multiplyScalar(Math.min(to.length(), ground.size * 1.2 * dt)));
+        g.position.set(here.x, heightAt(here.x, here.y) + Math.sin(now / 300) * ground.size * 0.03, here.y);
+        g.rotation.y = Math.atan2(to.x, to.y) + Math.PI;
+      }
+    } else if (reaper.phase === 'lie') {
+      reaper.lie = Math.min(1, reaper.lie + dt * 0.5);
+      g.rotation.z = -1.45 * reaper.lie;
+      g.rotation.y = holder.rotation.y;
+      if (Math.floor(now / 1000) % 5 === 0 && now > bubbleUntil) say('z z z   z z z', 1200);
+      if (state.name !== 'sleep') { reaper.phase = 'sink'; reaper.born = now; }
+    } else { // sink: back into the ground, gone
+      const k = Math.min(1, (now - reaper.born) / 2000);
+      g.position.y = heightAt(g.position.x, g.position.z) - h * k;
+      if (k >= 1) { scene.remove(g); g.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); }); reaper = null; }
+    }
   }
 
   function arrive() {
@@ -430,15 +506,20 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
       leg.visible = state.name !== 'sleep' || cat.sprite;
     });
     const rearing = state.name === 'eat' && state.rear;
+    const spooked = state.name === 'spook' && state.phase > 0;
+    const puff = spooked ? 1.3 : 1;
+    body.scale.x = puff; body.scale.z = spooked ? 1.15 : 1;
+    tail.scale.setScalar(spooked ? 1.7 : 1);
     body.position.y = state.name === 'sleep' ? -0.3 : walking ? Math.abs(swing) * (state.name === 'run' ? 0.07 : 0.025) : rearing ? 0.22 : 0;
     // Breathing: a slow swell of the chest, deeper asleep.
     body.scale.y = 1 + Math.sin(t * (state.name === 'sleep' ? 1.1 : 1.8)) * (state.name === 'sleep' ? 0.03 : walking ? 0 : 0.014);
     const sitting = state.name === 'sit' || state.name === 'friendly';
-    body.rotation.x = rearing ? -0.95 : sitting ? -0.28 : 0;
+    body.rotation.x = rearing ? -0.95 : sitting ? -0.28 : spooked ? 0.35 : 0;
+    if (spooked) { body.position.y = 0.12 + Math.sin(t * 30) * 0.01; legs.forEach((l) => { l.rotation.x = 0; }); }
     if (rearing) { legs[0].rotation.x = legs[1].rotation.x = -1.1 + Math.sin(t * 8) * 0.08; legs[2].rotation.x = legs[3].rotation.x = 0.85; }
     body.rotation.z = state.name === 'friendly' ? Math.sin(t * 2.2) * 0.12 : 0; // rubbing against your leg
     if (sitting) { legs[2].rotation.x = legs[3].rotation.x = -1.2; }
-    head.rotation.x = rearing ? 0.2 + Math.sin(t * 8) * 0.08 : state.name === 'eat' ? 0.55 + Math.sin(t * 8) * 0.08
+    head.rotation.x = spooked ? 0.45 : state.name === 'spook' ? -0.1 + Math.sin(t * 2) * 0.15 : rearing ? 0.2 + Math.sin(t * 8) * 0.08 : state.name === 'eat' ? 0.55 + Math.sin(t * 8) * 0.08
       : state.name === 'sniff' ? 0.4 + Math.sin(t * 14) * 0.06
         : state.name === 'sleep' ? 0.35 : sitting ? 0.28 : 0;
     head.rotation.z = state.name === 'friendly' ? Math.sin(t * 1.4) * 0.18 : walking ? swing * 0.08 : 0; // the head tilt
@@ -453,7 +534,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
     if (t > nextBlink) { blinkUntil = t + 0.13; nextBlink = t + 2.5 + Math.random() * 5; }
     eyes.scale.y = t < blinkUntil ? 0.08 : 1;
     tail.rotation.y = state.name === 'sleep' ? 1.7 : Math.sin(t * (walking ? 3 : 1.2)) * 0.35;
-    tail.rotation.x = state.name === 'sleep' ? 0.9 : state.name === 'run' ? 0.5 : state.name === 'friendly' ? -0.35 + Math.sin(t * 9) * 0.04 : 0;
+    tail.rotation.x = spooked ? -1.3 + Math.sin(t * 20) * 0.1 : state.name === 'sleep' ? 0.9 : state.name === 'run' ? 0.5 : state.name === 'friendly' ? -0.35 + Math.sin(t * 9) * 0.04 : 0;
 
     if (cat.sprite) {
       const { material, textures } = cat.sprite;
@@ -509,6 +590,23 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
       nextActivity();
     }
 
+    if (state.name === 'spook') {
+      // Face the figure; after a curious moment the fur goes up, a sidestep, a hiss, then she bolts.
+      let turn = Math.atan2(ground.ghost[0] - holder.position.x, ground.ghost[2] - holder.position.z) - holder.rotation.y;
+      turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+      holder.rotation.y += turn * Math.min(1, dt * 4);
+      const age = now - state.started;
+      if (state.phase === 0 && age > 2200) { state.phase = 1; say('!!!', 1200); }
+      if (state.phase === 1 && age > 3200) { state.phase = 2; say('HSSSSSS', 1600); onHiss?.(); }
+      if (state.phase >= 1) { // sidestepping away from it, stiff-legged
+        const away = new THREE.Vector2(holder.position.x - ground.ghost[0], holder.position.z - ground.ghost[2]).normalize();
+        holder.position.x += away.x * dt * ground.size * 0.35;
+        holder.position.z += away.y * dt * ground.size * 0.35;
+        holder.position.y = heightAt(holder.position.x, holder.position.z);
+      }
+      if (age > 5200) { say('*bolts*', 1200); walkTo(edgeCell(), true, () => { say('…', 1000); plan('sit', 3000); }); }
+    }
+    if (reaper) updateReaper(now, dt);
     if (state.name === 'eat' && state.plant) {
       const { plant } = state;
       let turn = Math.atan2(plant.x - holder.position.x, plant.z - holder.position.z) - holder.rotation.y;
@@ -610,8 +708,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
   });
 
   return {
-    enter: (object, focus, plant) => measure(object, focus, plant).catch((error) => console.warn('salvia:', error)),
-    leave: () => { measuring++; ground = null; holder.visible = false; bubble.hidden = true; quiet(); uproot(); },
+    enter: (object, focus, plant, ghost) => measure(object, focus, plant, ghost).catch((error) => console.warn('salvia:', error)),
+    leave: () => { measuring++; if (reaper) { scene.remove(reaper.g); reaper = null; } ground = null; holder.visible = false; bubble.hidden = true; quiet(); uproot(); },
     // A scene that knows its own ground: { heightAt, cells: [[x, z, y]], size, holderAt, plantCell? }.
     walkOn: (spec) => {
       measuring++;
@@ -662,5 +760,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
     get form() { return FORMS[formIndex]; },
     becomeForm,
     summon: () => { if (ground) { plan('away', 0); } },
+    spook: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ground.ghostCell, true, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); }); } },
+    ghostnap: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ground.ghostCell, true, () => { plan('sleep', 40000, { reaper: true }); setTimeout(summonReaper, 1500); }); } },
   };
 }
