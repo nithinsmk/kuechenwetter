@@ -25,6 +25,11 @@
       ],
       "radius": 0.5212
     },
-    "title": "Ladle Raises Its Hand"
+    "title": "Ladle Raises Its Hand",
+    "plant": [
+      -1.0,
+      0.3,
+      -0.6
+    ]
   }
 ]

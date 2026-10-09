@@ -376,10 +376,11 @@ body.clean .wheel-corner { display: none !important; }
 
 #floaters { position: absolute; inset: 0; }
 .floater {
-  position: absolute;
+  position: fixed;
+  z-index: 5;
+  pointer-events: none;
   width: 60px;
   height: 60px;
-  margin-left: -30px;
   background: var(--sheet) 0 0 / 720px 60px no-repeat;
   filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
   animation: floater-turn var(--spin) steps(12) infinite, floater-bob var(--bob) ease-in-out var(--delay) infinite alternate;
@@ -389,6 +390,24 @@ body.clean .wheel-corner { display: none !important; }
   from { transform: translate(-2px, 2px) rotate(-5deg); }
   to { transform: translate(2px, -7px) rotate(5deg); }
 }
+/* the fading copies a floater leaves when it chases the mouse */
+.floater.ghost { animation: floater-ghost 0.5s linear forwards; }
+@keyframes floater-ghost { from { opacity: 0.55; } to { opacity: 0; transform: scale(0.8); } }
 @media (prefers-reduced-motion: reduce) { .floater { animation: none; } }
+body.clean .floater { display: none !important; }
 #dates { flex-wrap: nowrap; flex-shrink: 0; }
 .links { justify-content: flex-end; }
+
+/* what Salvia says, hanging over her for a moment */
+#salvia-says {
+  position: fixed;
+  z-index: 4;
+  margin: 0;
+  padding: 1px 5px;
+  transform: translate(-50%, -100%);
+  background: var(--chip);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+body.clean #salvia-says { display: none !important; }
