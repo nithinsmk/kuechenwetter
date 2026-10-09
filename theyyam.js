@@ -170,6 +170,9 @@ export function makeTheyyam({ scene, camera, canvas, salvia, onLeave }) {
     s.scale.set(W, H, 1);
     const place = (p, lift = 0) => s.position.copy(p).add(new THREE.Vector3(0, H / 2 + lift, 0));
     const frames = (names, fps) => names[Math.floor(age * fps) % names.length];
+    // Turning round on the spot, legs and all: the full figure narrows and widens (and is
+    // mirrored while his back is to us). Returns the flip for show().
+    const twirl = (turns) => { const c = Math.cos(turns * Math.PI * 2); s.scale.x = W * Math.max(0.12, Math.abs(c)); return c < 0; };
 
     if (v.phase === 'glow') { // a fire-like glow building in the corner
       const k = Math.min(1, age / 2.6);
@@ -184,14 +187,14 @@ export function makeTheyyam({ scene, camera, canvas, salvia, onLeave }) {
     v.halo.scale.setScalar(H * 2.2 * (0.9 + Math.random() * 0.2));
 
     if (v.phase === 'here') {
-      const done = run(v, age, dt, place, frames);
+      const done = run(v, age, dt, place, frames, twirl);
       if (done) { v.phase = 'leave'; v.t0 = performance.now(); }
       return;
     }
     if (v.phase === 'leave') { // faster and faster, then a spinning top, then embers
       if (age < 1.4) {
         place(v.pos);
-        show(s, frames(['spin0', 'spin1', 'spin2'], 6 + age * 14));
+        show(s, frames(['idle0', 'idle1'], 6), twirl(age * (1.2 + age * 2.5)));
       } else {
         if (!v.top) { v.top = spinningTop(H); group.add(v.top); s.visible = false; }
         const k = Math.min(1, (age - 1.4) / 1.6);
@@ -207,14 +210,14 @@ export function makeTheyyam({ scene, camera, canvas, salvia, onLeave }) {
   }
 
   // One behaviour; true when it's over.
-  function run(v, age, dt, place, frames) {
+  function run(v, age, dt, place, frames, twirl) {
     const s = v.s;
     const H = v.size;
     switch (v.kind) {
       case 'watch': { // stands, looks about, blinks now and then
         place(v.pos);
         show(s, age % 3.5 > 3.15 ? 'idle4' : frames(['idle0', 'idle1', 'idle2', 'idle3'], 3));
-        return age > 9;
+        return age > 14;
       }
       case 'hop': { // back and forth over the spoon
         const hop = Math.floor(age / 1.1);
@@ -224,18 +227,18 @@ export function makeTheyyam({ scene, camera, canvas, salvia, onLeave }) {
         if (age < 0.9) { place(v.ground.clone().lerp(a, age / 0.9)); show(s, frames(['idle0', 'idle1'], 6)); v.pos.copy(a); return false; }
         v.pos.copy(a).lerp(b, k);
         place(v.pos, Math.sin(k * Math.PI) * H * 0.55);
-        show(s, k > 0.15 && k < 0.85 ? 'spin1' : 'idle0', hop % 2 === 1);
-        return age > 0.9 + 1.1 * 6;
+        show(s, k > 0.15 && k < 0.85 ? 'idle2' : 'idle0', hop % 2 === 1);
+        return age > 0.9 + 1.1 * 11;
       }
       case 'spoon': { // up onto the spoon's back, and dances there
         const top = spoonMid(v).clone().setY(Math.max(v.spot.bowl.y, v.spot.handle.y) + H * 0.04);
-        if (age < 0.8) { const k = age / 0.8; v.pos.copy(v.ground).lerp(top, k); place(v.pos, Math.sin(k * Math.PI) * H * 0.5); show(s, 'spin1'); return false; }
+        if (age < 0.8) { const k = age / 0.8; v.pos.copy(v.ground).lerp(top, k); place(v.pos, Math.sin(k * Math.PI) * H * 0.5); show(s, 'idle2'); return false; }
         const sway = Math.sin(age * 3) * H * 0.18;
         const along = new THREE.Vector3().subVectors(v.spot.handle, v.spot.bowl).normalize();
         v.pos.copy(top).addScaledVector(along, sway);
         place(v.pos, Math.abs(Math.sin(age * 6)) * H * 0.08);
-        show(s, frames(['spin0', 'spin1', 'spin2', 'spin1'], 6));
-        return age > 9;
+        show(s, frames(['idle0', 'idle1', 'idle2', 'idle1'], 6), twirl(age * 0.8));
+        return age > 14;
       }
       case 'dance': { // dances, the spin gets faster, a spinning top for a while, and back
         place(v.pos, Math.abs(Math.sin(age * 5)) * H * 0.06);
@@ -251,9 +254,9 @@ export function makeTheyyam({ scene, camera, canvas, salvia, onLeave }) {
         } else {
           if (v.top) v.top.visible = false;
           s.visible = true;
-          show(s, frames(['spin0', 'spin1', 'spin2', 'spin1'], age < 3.5 ? 5 + age * 2 : 7));
+          show(s, frames(['idle0', 'idle1', 'idle2', 'idle1'], 6), twirl(age < 3.5 ? age * (0.4 + age * 0.3) : age * 0.7));
         }
-        return age > 9;
+        return age > 14;
       }
       case 'play': { // circles round Salvia
         const her = salvia.where;
@@ -262,8 +265,8 @@ export function makeTheyyam({ scene, camera, canvas, salvia, onLeave }) {
         const a = age * 1.6;
         v.pos.set(centre.x + Math.cos(a) * r, centre.y, centre.z + Math.sin(a) * r);
         place(v.pos, Math.abs(Math.sin(age * 6)) * H * 0.1);
-        show(s, frames(['spin0', 'spin1', 'spin2', 'spin1'], 7));
-        return age > 9;
+        show(s, frames(['idle0', 'idle1', 'idle2', 'idle1'], 7), twirl(age * 0.6));
+        return age > 14;
       }
       case 'sleep': { // lies down beside her and sleeps until she stirs
         const her = salvia.where;
@@ -273,7 +276,7 @@ export function makeTheyyam({ scene, camera, canvas, salvia, onLeave }) {
         else if (age < 1.2) show(s, 'sleep1');
         else show(s, frames(['sleep2', 'sleep3', 'sleep4', 'sleep5'], 1.2));
         if (age > 1.2 && Math.floor(age) % 4 === 0) zzz(v);
-        return age > 22 || (age > 3 && salvia.state !== 'sleep');
+        return age > 27 || (age > 3 && salvia.state !== 'sleep');
       }
       default: return true;
     }
