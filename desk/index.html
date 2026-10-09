@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Küchenwetter · Keeper Desk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="desk.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="station">Küchenwetter</span>
+      <span class="unit">keeper desk</span>
+    </div>
+    <div class="clock"><span class="label">berlin</span> <span id="clock">--:--:--</span></div>
+    <div class="onair" id="onair-lamp"><span class="lamp"></span><span id="onair-text">off air</span></div>
+  </header>
+
+  <main class="console">
+    <!-- now and next -->
+    <section class="module now" aria-labelledby="now-h">
+      <h2 id="now-h" class="label">on air</h2>
+      <div class="weather-now"><span class="chip" id="now-weather">—</span> <span class="quiet" id="now-until"></span></div>
+      <p class="playing" id="now-playing">loading…</p>
+      <div class="progress"><div id="now-progress"></div></div>
+      <p class="quiet times"><span id="now-elapsed">0:00</span><span id="now-length">0:00</span></p>
+      <h3 class="label">next</h3>
+      <ol class="next" id="next"></ol>
+    </section>
+
+    <!-- the day -->
+    <section class="module day" aria-labelledby="day-h">
+      <h2 id="day-h" class="label">the day · five weathers in turn, نظيفة between them</h2>
+      <div class="strip" id="strip"></div>
+      <div class="hours"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+    </section>
+
+    <!-- listeners -->
+    <section class="module channels" aria-labelledby="ch-h">
+      <h2 id="ch-h" class="label">in the kitchen</h2>
+      <div class="strips" id="channels"></div>
+    </section>
+
+    <!-- storage -->
+    <section class="module meters" aria-labelledby="st-h">
+      <h2 id="st-h" class="label">storage · free plan</h2>
+      <div class="meter"><div id="storage-fill"></div></div>
+      <p class="quiet" id="storage-text">—</p>
+      <p class="quiet" id="egress-text"></p>
+    </section>
+
+    <!-- requests -->
+    <section class="module requests" aria-labelledby="rq-h">
+      <h2 id="rq-h" class="label">requests <span class="count" id="rq-count"></span></h2>
+      <p class="quiet hint">drop a song file on a request to put it on air and tick it off</p>
+      <ul class="list" id="requests"></ul>
+      <details>
+        <summary class="label">done</summary>
+        <ul class="list done" id="requests-done"></ul>
+      </details>
+    </section>
+
+    <!-- loading songs -->
+    <section class="module load" aria-labelledby="ld-h">
+      <h2 id="ld-h" class="label">load songs</h2>
+      <div class="drop" id="drop">
+        <p><strong>drop MP3s here</strong></p>
+        <p class="quiet">named "Artist - Song.mp3", or "01 Artist - Song.mp3" for a mixtape</p>
+        <label class="button-like">or choose files<input type="file" id="files" accept=".mp3,.m4a,.aac,.ogg,.wav" multiple hidden></label>
+      </div>
+      <div class="options">
+        <label>weather
+          <select id="load-weather">
+            <option value="">نظيفة (between weathers)</option>
+          </select>
+        </label>
+        <label>on air
+          <select id="load-when">
+            <option value="tonight">from tonight's midnight</option>
+            <option value="today">straight away</option>
+          </select>
+        </label>
+        <label>mixtape title <span class="quiet">(optional)</span>
+          <input id="load-mix" placeholder="leave empty for single songs" autocomplete="off">
+        </label>
+      </div>
+      <ol class="queue" id="queue"></ol>
+    </section>
+
+    <!-- the library, by playlist -->
+    <section class="module library" aria-labelledby="lib-h">
+      <h2 id="lib-h" class="label">playlists</h2>
+      <div class="columns" id="library"></div>
+    </section>
+  </main>
+
+  <p class="toast" id="toast" role="status" hidden></p>
+
+  <script type="module" src="desk.js"></script>
+</body>
+</html>

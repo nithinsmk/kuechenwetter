@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
 import { SUPABASE_URL, SUPABASE_KEY, AUDIO_URL } from './config.js';
 import { SCAN_DIR, createStage, progressText } from './scan.js';
+import { makeBroadcast } from './broadcast.js';
 
 const WEATHERS = ['fog_before_dawn', 'clearing_by_noon', 'showers_late_afternoon', 'humid_at_dusk', 'rain_after_midnight'];
 const STATION = 'Küchenwetter';
@@ -79,80 +80,15 @@ async function loadSeries() {
   showScan(series.some((s) => s.date === wanted) ? wanted : series.at(-1)?.date);
 }
 
-// --- the broadcast: one shuffled day, the same for everyone, computed from the clock ---
+// --- the broadcast: five weathers in turn, the same for everyone (see broadcast.js) ---
 
-const berlin = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Berlin', hourCycle: 'h23',
-  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
-});
-
-function berlinClock(ms) {
-  const p = Object.fromEntries(berlin.formatToParts(ms).map((x) => [x.type, x.value]));
-  return { day: `${p.year}-${p.month}-${p.day}`, seconds: (+p.hour * 60 + +p.minute) * 60 + +p.second };
-}
-
-// The moment (ms) of the latest midnight in Berlin, also on clock-change days.
-function berlinMidnight(now) {
-  let start = now - berlinClock(now).seconds * 1000 - (now % 1000);
-  const off = berlinClock(start).seconds;
-  if (off) start -= (off > 43200 ? off - 86400 : off) * 1000;
-  return start;
-}
-
-function seededRandom(text) {
-  let a = 2166136261;
-  for (const ch of text) a = Math.imul(a ^ ch.codePointAt(0), 16777619);
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-let tracks = [];
-let schedule = null;
-
-// Everything uploaded before today's midnight, shuffled with the date as the seed.
-// Parts of one show stay together, in order. A show is one artist and title; for a
-// mixtape the title is "Mixtape · Artist – Song", and the part before " · " names the show.
-function buildDay(now) {
-  const start = berlinMidnight(now);
-  const shows = new Map();
-  for (const t of tracks) {
-    if (Date.parse(t.added_at) >= start) continue;
-    const key = `${t.artist}\n${t.title.split(' · ')[0]}`;
-    if (!shows.has(key)) shows.set(key, []);
-    shows.get(key).push(t);
-  }
-  const list = [...shows.values()].map((parts) => parts.sort((a, b) => a.part - b.part));
-  list.sort((a, b) => Date.parse(a[0].added_at) - Date.parse(b[0].added_at) || (a[0].id < b[0].id ? -1 : 1));
-  const day = berlinClock(now).day;
-  const random = seededRandom(day);
-  for (let i = list.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [list[i], list[j]] = [list[j], list[i]];
-  }
-  const sequence = list.flat();
-  return { day, start, sequence, total: sequence.reduce((sum, t) => sum + Number(t.seconds), 0) };
-}
-
-function onAir(now) {
-  if (!schedule || berlinClock(now).day !== schedule.day) schedule = buildDay(now);
-  if (!schedule.total) return null;
-  let t = ((now - schedule.start) / 1000) % schedule.total;
-  for (const track of schedule.sequence) {
-    if (t < track.seconds) return { track, offset: t };
-    t -= track.seconds;
-  }
-  return { track: schedule.sequence[0], offset: 0 };
-}
+const broadcast = makeBroadcast();
+const onAir = (now) => broadcast.at(now);
 
 async function loadTracks() {
-  const { data, error } = await supabase.from('tracks').select('id, artist, title, part, file, seconds, added_at');
+  const { data, error } = await supabase.from('tracks').select('id, artist, title, part, file, seconds, added_at, weather');
   if (error) throw error;
-  tracks = data.map((t) => ({ ...t, seconds: Number(t.seconds) }));
-  schedule = null;
+  broadcast.setTracks(data);
 }
 
 // --- the player ---
@@ -161,8 +97,11 @@ const audio = new Audio();
 audio.preload = 'auto';
 let listening = false;
 
-function label(track) {
+function label(at) {
+  const track = at?.track;
   show($('onair'), track ? `now playing: ${track.artist} – ${track.title}` : `${STATION} is quiet today`);
+  const plan = broadcast.plan();
+  show($('weather'), at?.ident ? `between weathers: ${track.artist}` : `the weather now: ${plan.weather}`);
   if (track && 'mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({ title: track.title, artist: track.artist, album: STATION });
   }
@@ -170,7 +109,7 @@ function label(track) {
 
 function tune() {
   const at = onAir(Date.now());
-  label(at?.track);
+  label(at);
   if (!listening) return;
   if (!at) return audio.pause();
 
@@ -313,7 +252,8 @@ $('request').addEventListener('submit', async (event) => {
   if (!song) return;
   const button = event.target.querySelector('button');
   button.disabled = true;
-  const { error } = await supabase.from('requests').insert({ song });
+  const weather = $('request-weather').value || null;
+  const { error } = await supabase.from('requests').insert({ song, weather });
   button.disabled = false;
   if (error) {
     console.error(error);
@@ -338,7 +278,7 @@ for (const button of document.querySelectorAll('#works button')) {
 if (new URLSearchParams(location.search).has('clean')) document.body.classList.add('clean');
 
 if (new URLSearchParams(location.search).has('debug')) {
-  window.kw = { audio, stage, onAir: () => onAir(Date.now()), owners, get schedule() { return schedule; } };
+  window.kw = { audio, stage, broadcast, onAir: () => onAir(Date.now()), owners };
 }
 
 renderWeathers();

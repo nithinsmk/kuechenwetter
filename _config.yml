@@ -1,0 +1,9 @@
+# GitHub Pages: publish the radio and the label, not the keeper tools.
+exclude:
+  - desk
+  - tools
+  - radio
+  - supabase
+  - documentation
+  - README.md
+  - CHANGELOG.md

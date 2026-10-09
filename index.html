@@ -22,6 +22,7 @@
   <header id="station">
     <h1>Küchenwetter</h1>
     <p id="onair">tuning in…</p>
+    <p id="weather"></p>
     <p id="listeners" aria-live="polite"></p>
     <p id="status" role="status" hidden></p>
   </header>
@@ -40,6 +41,17 @@
         <input id="song" name="song" maxlength="200" placeholder="artist – song" autocomplete="off" required>
         <button type="submit">send</button>
       </div>
+      <div class="row">
+        <label for="request-weather" class="quiet">for which weather?</label>
+        <select id="request-weather" name="weather">
+          <option value="">any weather</option>
+          <option>rain_after_midnight</option>
+          <option>fog_before_dawn</option>
+          <option>clearing_by_noon</option>
+          <option>showers_late_afternoon</option>
+          <option>humid_at_dusk</option>
+        </select>
+      </div>
       <p id="sent" role="status" hidden></p>
     </form>
     <div class="row">
@@ -53,7 +65,7 @@
 
   <dialog id="about" aria-labelledby="about-title">
     <h2 id="about-title">Küchenwetter</h2>
-    <p>A radio station for one kitchen. Everyone listening hears the same song at the same moment. The programme is reshuffled every midnight. Requests air the next day, if they air at all.</p>
+    <p>A radio station for one kitchen. Everyone listening hears the same song at the same moment. The day belongs to five weathers in turn, each with its own playlist, and نظيفة plays between them. Requests air the next day, if they air at all.</p>
     <p>There are five weathers. When all five are in the kitchen, the sixth waits outside.</p>
 
     <h2 dir="rtl" lang="ar">نظيفة</h2>

@@ -14,7 +14,11 @@ Küchenwetter: a private radio for one kitchen, over 3D scans of its dish draine
 - Backend: Supabase. `supabase/setup.sql` makes the tables, rules and the `radio` audio folder.
   Secrets live in `.env` (not in git); `config.js` holds only the public address and publishable key.
 
-## The keeper's desk
+## The keeper desk
+
+Run `python3 desk/server.py` and open http://localhost:8772/desk/ (local only; it holds the secret key).
+
+## The keeper's command line
 
 ```
 python3 radio/keeper.py requests

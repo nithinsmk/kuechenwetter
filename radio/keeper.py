@@ -32,6 +32,7 @@ from zoneinfo import ZoneInfo
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUCKET = 'radio'
 BERLIN = ZoneInfo('Europe/Berlin')
+WEATHERS = ['rain_after_midnight', 'fog_before_dawn', 'clearing_by_noon', 'showers_late_afternoon', 'humid_at_dusk']
 TYPES = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.ogg': 'audio/ogg', '.wav': 'audio/wav'}
 
 
@@ -117,8 +118,10 @@ def notify_listeners():
 
 # --- commands ---
 
-def cmd_requests(_):
-    rows = call('GET', '/rest/v1/requests?select=id,song,created_at&done_at=is.null&order=created_at')
+def cmd_requests(args):
+    rows = call('GET', '/rest/v1/requests?select=id,song,weather,created_at&done_at=is.null&order=created_at')
+    if getattr(args, 'json', False):
+        return print(json.dumps(rows or []))
     if not rows:
         return print('no open requests')
     for row in rows:
@@ -144,16 +147,19 @@ def check_audio(path):
         sys.exit(f'{path.name} is over the 50 MB limit; split or re-encode it first')
 
 
-def upload_track(path, artist, title, part, today):
+def upload_track(path, artist, title, part, today, weather=None):
     seconds = seconds_of(path)
     name = f'{slug(artist)}-{slug(title)}-{part}-{secrets.token_hex(3)}{path.suffix.lower()}'
     call('POST', f'/storage/v1/object/{BUCKET}/{urllib.parse.quote(name)}', path.read_bytes(),
          {'Content-Type': TYPES[path.suffix.lower()], 'x-upsert': 'false'})
     row = {'artist': artist, 'title': title, 'part': part, 'file': name, 'seconds': seconds}
+    if weather:
+        row['weather'] = weather
     if today:
         row['added_at'] = just_before_midnight()
-    call('POST', '/rest/v1/tracks', row, {'Prefer': 'return=minimal'})
-    print(f"added {artist} – {title} ({seconds:.0f} s)")
+    created = call('POST', '/rest/v1/tracks', row, {'Prefer': 'return=representation'})
+    print(f"added {artist} – {title} ({seconds:.0f} s){' for ' + weather if weather else ''}")
+    return created[0] if created else row
 
 
 def move_to_added(path):
@@ -167,7 +173,7 @@ def move_to_added(path):
 def cmd_add(args):
     path = pathlib.Path(args.file).expanduser()
     check_audio(path)
-    upload_track(path, args.artist, args.title, args.part, args.today)
+    upload_track(path, args.artist, args.title, args.part, args.today, args.weather)
     if args.today:
         notify_listeners()
     print('on air today' if args.today else 'on air from the next midnight')
@@ -227,7 +233,9 @@ def cmd_remove(args):
 def main():
     parser = argparse.ArgumentParser(description='Küchenwetter keeper')
     sub = parser.add_subparsers(dest='command', required=True)
-    sub.add_parser('requests').set_defaults(run=cmd_requests)
+    req = sub.add_parser('requests')
+    req.add_argument('--json', action='store_true')
+    req.set_defaults(run=cmd_requests)
     sub.add_parser('tracks').set_defaults(run=cmd_tracks)
     add = sub.add_parser('add')
     add.add_argument('file')
@@ -235,6 +243,7 @@ def main():
     add.add_argument('--title', required=True)
     add.add_argument('--part', type=int, default=1)
     add.add_argument('--today', action='store_true', help='air straight away instead of from the next midnight')
+    add.add_argument('--weather', choices=WEATHERS, help="the weather whose playlist it joins (none: نظيفة's songs)")
     add.set_defaults(run=cmd_add)
     mix = sub.add_parser('add-mix')
     mix.add_argument('folder')

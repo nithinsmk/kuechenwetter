@@ -75,7 +75,7 @@ footer label,
 }
 
 h1 { font-weight: 700; letter-spacing: 0.02em; }
-#listeners, #status { color: var(--muted); }
+#listeners, #status, #weather { color: var(--muted); }
 
 /* --- middle: choosing a weather --- */
 
@@ -251,3 +251,18 @@ dialog form button:hover { color: var(--ink); }
 body.clean #station,
 body.clean #threshold,
 body.clean footer { display: none !important; }
+
+/* the weather a request is for */
+#request select {
+  pointer-events: auto;
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--chip);
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+}
+#request label.quiet { color: var(--muted); align-self: center; }
