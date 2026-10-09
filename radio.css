@@ -55,6 +55,7 @@ button {
 footer label,
 #sent,
 #dates button,
+#work,
 .links button {
   width: fit-content;
   padding: 2px 6px;
@@ -220,24 +221,6 @@ dialog h2 {
 dialog h2:first-child { margin-top: 0; }
 dialog p + p { margin-top: 8px; }
 
-#works {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-#works button {
-  display: block;
-  padding: 0;
-  text-align: left;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-#works span { color: var(--muted); }
 
 dialog form {
   margin-top: 20px;
@@ -366,3 +349,10 @@ body.clean .wheel-corner { display: none !important; }
 .log-button[aria-expanded="true"] { background: #f3e6cf; }
 .log-button svg { display: block; transition: transform 0.3s ease; }
 .log-button:hover svg { transform: rotate(-6deg); }
+
+/* --- the letter --- */
+
+.letter p + p { margin-top: 10px; }
+.signature { display: inline-block; margin-top: 4px; font-size: 22px; }
+.radio-line { margin-top: 18px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--muted) 40%, transparent); color: var(--muted); }
+#work { color: var(--muted); }

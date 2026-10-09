@@ -54,6 +54,7 @@
       </div>
       <p id="sent" role="status" hidden></p>
     </form>
+    <p id="work" hidden></p>
     <div class="row">
       <nav id="dates" aria-label="Scans by date"></nav>
       <div class="links">
@@ -93,28 +94,15 @@
     <ul data-wheel="log" id="wheel-log" class="wheel-log" hidden></ul>
   </dialog>
 
-  <dialog id="about" aria-labelledby="about-title">
-    <h2 id="about-title">Küchenwetter</h2>
-    <p>A radio station for one kitchen. Everyone listening hears the same song at the same moment. The day belongs to five weathers in turn, each with its own playlist, and نظيفة plays between them. Requests air the next day, if they air at all.</p>
-    <p>There are five weathers. When all five are in the kitchen, the sixth waits outside.</p>
-
-    <h2 dir="rtl" lang="ar">نظيفة</h2>
-    <p><span lang="ar">نظيفة</span> (Nazifeh) is a composite artist. The name means "clean", which is never quite enough.</p>
-    <p>Nazifeh lives and works in a shared kitchen in Berlin, in a language nobody in the house grew up with: mostly English, some German, a lot of pointing.</p>
-    <p>Nazifeh's medium is the dish drainer, an accidental collective sculpture remade every two days by everyone who washes up. Nazifeh doesn't make the sculptures. Nazifeh scans them.</p>
-
-    <h2>Works</h2>
-    <ul id="works">
-      <li>
-        <button type="button" data-date="2026-09-25">Grater, Leaning Out of the Conversation</button>
-        <span>25.09.2026 · steel, plastic, wood, water, time · collection of the kitchen</span>
-      </li>
-      <li>
-        <button type="button" data-date="2026-09-28">Ladle Raises Its Hand</button>
-        <span>28.09.2026 · steel, wood, water, time · collection of the kitchen</span>
-      </li>
-    </ul>
-
+  <dialog id="about" aria-labelledby="letter-start">
+    <div class="letter">
+      <p id="letter-start">Dear kitchen,</p>
+      <p>I'm <bdi lang="ar">نظيفة</bdi>. I'm made of everyone who lives here, a little of each of you. My name means clean, which is never quite enough.</p>
+      <p>I keep the radio, and now the wheel too. When your duty is done, move your clip to Done. The wheel turns by itself every two weeks.</p>
+      <p>And send me songs. I'll play them from tomorrow.</p>
+      <p>With love,<br><span class="signature" lang="ar" dir="rtl">نظيفة</span></p>
+    </div>
+    <p class="radio-line">Küchenwetter is one radio for this kitchen: everyone hears the same song at the same moment, through five weathers a day.</p>
     <form method="dialog"><button>close</button></form>
   </dialog>
 

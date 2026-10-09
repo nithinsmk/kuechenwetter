@@ -51,6 +51,7 @@ async function showScan(date) {
   const item = series.find((s) => s.date === date);
   if (!item) return;
   for (const b of $('dates').children) b.setAttribute('aria-current', String(b.dataset.date === date));
+  show($('work'), item.title || '');
   show($('status'), 'loading the kitchen');
   try {
     const shown = await stage.show({ url: SCAN_DIR + item.file, name: item.file, focus: item.focus },
@@ -73,6 +74,7 @@ async function loadSeries() {
     button.type = 'button';
     button.dataset.date = item.date;
     button.textContent = dateLabel(item.date);
+    if (item.title) button.title = item.title;
     button.addEventListener('click', () => showScan(item.date));
     $('dates').appendChild(button);
   }
@@ -272,9 +274,6 @@ $('request').addEventListener('submit', async (event) => {
 // --- about ---
 
 $('about-open').addEventListener('click', () => $('about').showModal());
-for (const button of document.querySelectorAll('#works button')) {
-  button.addEventListener('click', () => { $('about').close(); showScan(button.dataset.date); });
-}
 
 // --- start ---
 
