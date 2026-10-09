@@ -55,9 +55,26 @@ const salvia = makeSalvia({
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopPurr(); });
 
-// The crystal ball: each tap plays the next of the figure's scenes (for trying them out).
+// The crystal ball: each tap swivels round to the figure's side of the counter and plays
+// the next of its scenes (for trying them out).
+const FIGURE_VIEW = { from: [0.95, 0.42, 0.55], to: [-0.45, 0.1, -0.25] };
+let flight = null;
+function flyTo(view) {
+  sway = null;
+  clearTimeout(resumeSway);
+  flight = { from: camera.position.clone(), to: new THREE.Vector3(...view.from), fromT: controls.target.clone(), toT: new THREE.Vector3(...view.to), t0: performance.now() };
+}
+const flyFrame = (time) => {
+  if (!flight) return;
+  const k = Math.min(1, (time - flight.t0) / 1800);
+  const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+  camera.position.lerpVectors(flight.from, flight.to, e);
+  controls.target.lerpVectors(flight.fromT, flight.toT, e);
+  if (k === 1) { flight = null; resumeSway = setTimeout(startSway, 12000); }
+};
 let crystalTurn = 0;
 $('crystal').addEventListener('click', () => {
+  if (showing !== 'hill') flyTo(FIGURE_VIEW);
   const scenes = [
     () => { salvia.investigate(); return 'she goes to look'; },
     () => { salvia.spook(); return 'the spook'; },
@@ -91,6 +108,7 @@ $('treats').addEventListener('click', () => {
 
 stage.onFrame = (time) => {
   swayFrame(time);
+  flyFrame(time);
   salvia.update(time);
 };
 
