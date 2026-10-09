@@ -797,9 +797,27 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       walkTo(spot, true, () => plan('friendly', 12000));
       return true;
     },
+    // Things the camera can lock onto: [{ name, point: [x, y, z], size }].
+    landmarks() {
+      if (!ground) return [];
+      const list = [];
+      if (holder.visible) list.push({ name: 'Salvia', point: [holder.position.x, holder.position.y + ground.size * 0.5, holder.position.z], size: ground.size * 1.2 });
+      const [hx, hz] = ground.holderAt;
+      if (ground.heightAt) list.push({ name: 'the crest', point: [hx, heightAt(hx, hz) + ground.size, hz], size: ground.size * 4 });
+      else {
+        const tall = ground.size / OF_HOLDER;
+        list.push({ name: 'the holder', point: [hx, ground.floor + tall * 0.5, hz], size: tall * 0.9 });
+      }
+      for (const p of garden?.plants ?? []) list.push({ name: p.name, point: [p.x, p.y + p.height * 0.5, p.z], size: p.height * 0.9 });
+      if (ground.ghost) list.push({ name: 'the figure', point: [ground.ghost[0], ground.ghost[1] + ground.size * 1.5, ground.ghost[2]], size: ground.size * 3 });
+      return list;
+    },
+    // Seen or not: hidden while the camera looks through her eyes.
+    set seen(on) { if (cat) cat.root.visible = on; shadow.visible = on; },
+    get size() { return ground?.size ?? 0; },
     get state() { return state.name; },
     get plants() { return garden?.plants ?? []; },
-    eat: (index) => garden?.plants[index] && eatPlant(garden.plants[index], true),
+    eat: (index) => { if (!garden?.plants[index]) return; if (!holder.visible) arrive(); eatPlant(garden.plants[index], true); },
     get ground() { return ground && { floor: ground.floor, size: ground.size, holderAt: ground.holderAt, cells: ground.cells.length, plantCell: ground.plantCell }; },
     get where() { return holder.visible ? holder.position.toArray() : null; },
     get heading() { return holder.rotation.y; },

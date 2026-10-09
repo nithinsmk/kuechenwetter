@@ -55,14 +55,14 @@ const salvia = makeSalvia({
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopPurr(); });
 
-// The crystal ball: each tap swivels round to the figure's side of the counter and plays
+// The hamsa: each tap swivels round to the figure's side of the counter and plays
 // the next of its scenes (for trying them out).
 const FIGURE_VIEW = { from: [0.95, 0.42, 0.55], to: [-0.45, 0.1, -0.25] };
 let flight = null;
-function flyTo(view) {
+function flyTo(view, after = () => { resumeSway = setTimeout(startSway, 12000); }) {
   sway = null;
   clearTimeout(resumeSway);
-  flight = { from: camera.position.clone(), to: new THREE.Vector3(...view.from), fromT: controls.target.clone(), toT: new THREE.Vector3(...view.to), t0: performance.now() };
+  flight = { from: camera.position.clone(), to: new THREE.Vector3(...view.from), fromT: controls.target.clone(), toT: new THREE.Vector3(...view.to), t0: performance.now(), after };
 }
 const flyFrame = (time) => {
   if (!flight) return;
@@ -70,17 +70,42 @@ const flyFrame = (time) => {
   const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
   camera.position.lerpVectors(flight.from, flight.to, e);
   controls.target.lerpVectors(flight.fromT, flight.toT, e);
-  if (k === 1) { flight = null; resumeSway = setTimeout(startSway, 12000); }
+  if (k === 1) { const { after } = flight; flight = null; after?.(); }
 };
-let crystalTurn = 0;
-$('crystal').addEventListener('click', () => {
+let hamsaTurn = 0;
+// The hamsa, in pixels (16 × 20): silver edging, deep and light blue, the eye in the palm,
+// blue beads hanging from the fingers.
+const HAMSA = [
+  '....ssssssss....', '..ssbbbbbbbbss..', '.sbbbbbbbbbbbbs.', '.sbblwwwwwwlbbs.',
+  'sbbwwwiiiiwwwbbs', 'sbbwwikkkkiwwbbs', 'sbbwwwiiiiwwwbbs', '.sbblwwwwwwlbbs.',
+  'ssbbbbbbbbbbbbss', 'sbssbbsbbsbbssbs', 'slsslbslbslbssls', '.s.sbbsbbsbbs.s.',
+  '...sblsblsbls...', '...sbbsbbsbbs...', '...ssssssssss...', '....s..s..s.....',
+  '...ooo....ooo...', '...ooo....ooo...', '......ooo.......', '......ooo.......',
+];
+const HAMSA_INK = { s: '#c9d1dc', b: '#1d3fa8', l: '#4f7fe0', w: '#f4f6fa', i: '#2f6fe0', k: '#0b1640', o: '#2f6fe8' };
+(function drawHamsa() {
+  const px = 3;
+  const rect = (x, y, c) => `<rect x="${x * px}" y="${y * px}" width="${px}" height="${px}" fill="${c}"/>`;
+  let body = '';
+  let eye = '';
+  HAMSA.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (!HAMSA_INK[ch]) return;
+    const r = rect(x, y, HAMSA_INK[ch]);
+    if (y >= 3 && y <= 7 && 'wik'.includes(ch)) eye += r; else body += r;
+  }));
+  $('talisman').innerHTML = `<span class="turn"><svg viewBox="0 0 ${16 * px} ${20 * px}" width="${16 * px}" height="${20 * px}" shape-rendering="crispEdges" aria-hidden="true">${body}<g class="eye">${eye}</g></svg></span>`;
+}());
+$('talisman').addEventListener('click', () => {
+  endFollow();
+  const t = $('talisman');
+  t.classList.remove('now'); void t.offsetWidth; t.classList.add('now');
   if (showing !== 'hill') flyTo(FIGURE_VIEW);
   const scenes = [
     () => { salvia.investigate(); return 'she goes to look'; },
     () => { salvia.spook(); return 'the spook'; },
     () => { salvia.ghostnap(); return 'a nap by the figure, and a visitor'; },
   ];
-  const text = scenes[crystalTurn++ % scenes.length]();
+  const text = scenes[hamsaTurn++ % scenes.length]();
   show($('notice'), text);
   setTimeout(() => show($('notice'), ''), 3000);
 });
@@ -106,9 +131,68 @@ $('treats').addEventListener('click', () => {
   salvia.call();
 });
 
+// --- following Salvia: from behind her, or through her eyes; back to normal after 15 s ---
+let follow = null; // { mode, until }
+const FOLLOW_FOR = 15000;
+const camAt = new THREE.Vector3();
+const lookAt = new THREE.Vector3();
+function endFollow() {
+  if (!follow) return;
+  follow = null;
+  salvia.seen = true;
+  controls.enabled = true;
+  for (const b of document.querySelectorAll('[data-follow]')) { b.setAttribute('aria-pressed', 'false'); b.textContent = b.dataset.label; }
+  flyTo({ from: controls.position0.toArray(), to: controls.target0.toArray() }, startSway);
+}
+function startFollow(mode) {
+  if (!salvia.size) return;
+  if (!salvia.where) salvia.summon(); // she's away: bring her in
+  sway = null;
+  clearTimeout(resumeSway);
+  flight = null;
+  controls.enabled = false;
+  follow = { mode, until: performance.now() + FOLLOW_FOR };
+  for (const b of document.querySelectorAll('[data-follow]')) { b.setAttribute('aria-pressed', String(b.dataset.follow === mode)); b.textContent = b.dataset.label; }
+}
+for (const b of document.querySelectorAll('[data-follow]')) {
+  b.dataset.label = b.textContent;
+  b.addEventListener('click', () => (follow?.mode === b.dataset.follow ? endFollow() : startFollow(b.dataset.follow)));
+}
+$('view-reset').addEventListener('click', () => (follow ? endFollow() : flyTo({ from: controls.position0.toArray(), to: controls.target0.toArray() }, startSway)));
+let lastFrame = 0;
+function followFrame(time) {
+  const dt = Math.min(0.1, (time - lastFrame) / 1000);
+  lastFrame = time;
+  if (!follow) return;
+  const left = follow.until - performance.now();
+  const button = document.querySelector(`[data-follow="${follow.mode}"]`);
+  if (left <= 0) return endFollow();
+  button.textContent = `${button.dataset.label} · ${Math.ceil(left / 1000)}`;
+  const p = salvia.where;
+  if (!p) return; // not in yet
+  const size = salvia.size;
+  const h = salvia.heading;
+  const fx = Math.sin(h);
+  const fz = Math.cos(h);
+  const eyes = follow.mode === 'eyes';
+  salvia.seen = !eyes;
+  if (eyes) { // just in front of her face, looking where she looks, a touch down
+    camAt.set(p[0] + fx * size * 0.45, p[1] + size * 0.8, p[2] + fz * size * 0.45);
+    lookAt.set(p[0] + fx * size * 4, p[1] + size * 0.35, p[2] + fz * size * 4);
+  } else { // a little behind and above, looking at her
+    camAt.set(p[0] - fx * size * 3.2, p[1] + size * 1.6, p[2] - fz * size * 3.2);
+    lookAt.set(p[0] + fx * size * 0.6, p[1] + size * 0.5, p[2] + fz * size * 0.6);
+  }
+  const k = Math.min(1, dt * (eyes ? 9 : 4));
+  camera.position.lerp(camAt, k);
+  controls.target.lerp(lookAt, k);
+  camera.lookAt(controls.target);
+}
+
 stage.onFrame = (time) => {
   swayFrame(time);
   flyFrame(time);
+  followFrame(time);
   salvia.update(time);
 };
 
@@ -140,6 +224,7 @@ function crisp() {
 }
 
 async function display(item, label) {
+  endFollow();
   show($('status'), `loading ${label}`);
   try {
     const shown = await stage.show({ url: SCAN_DIR + item.file, name: item.file, focus: item.focus },
@@ -167,6 +252,7 @@ async function showScan(date, byHand = false) {
 
 function showHill() {
   if (showing === 'hill') return;
+  endFollow();
   showing = 'hill';
   for (const b of $('dates').children) b.setAttribute('aria-current', 'false');
   show($('work'), '');

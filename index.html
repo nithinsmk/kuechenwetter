@@ -24,6 +24,12 @@
     <p id="onair">tuning in…</p>
     <p id="weather"></p>
     <p id="listeners" aria-live="polite"></p>
+    <p id="viewbar">
+      <span>follow Salvia</span>
+      <button type="button" data-follow="behind">behind her</button>
+      <button type="button" data-follow="eyes">her eyes</button>
+      <button type="button" id="view-reset" title="back to the normal view" aria-label="back to the normal view">↺</button>
+    </p>
     <p id="status" role="status" hidden></p>
   </header>
 
@@ -58,14 +64,8 @@
     <div class="row">
       <div class="here">
         <!-- shake the treats and Salvia comes running (salvia.js, sounds.js) -->
-        <!-- a crystal ball, nearly hidden: cycles the figure's scenes, for testing -->
-        <button type="button" id="crystal" aria-label="the crystal ball (investigate, spook, the reaper)" title="the crystal ball">
-          <svg viewBox="0 0 24 28" width="30" height="35" aria-hidden="true">
-            <circle cx="12" cy="11" r="9.5" fill="rgba(200,220,255,0.28)" stroke="rgba(255,255,255,0.6)" stroke-width="0.8"/>
-            <ellipse cx="8.5" cy="7" rx="2.6" ry="1.6" fill="rgba(255,255,255,0.55)" transform="rotate(-35 8.5 7)"/>
-            <path d="M6 22 Q12 19 18 22 L19 26 H5 Z" fill="rgba(60,50,70,0.55)"/>
-          </svg>
-        </button>
+        <!-- the evil-eye hamsa: plays the figure's scenes in turn, for testing (drawn in radio.js) -->
+        <button type="button" id="talisman" aria-label="the hamsa (Salvia and the figure)" title="the hamsa"></button>
         <button type="button" id="treats" aria-label="shake the treats (Salvia comes running)" title="shake the treats">
           <svg viewBox="0 0 48 58" width="38" height="46" aria-hidden="true">
             <path d="M6 12 L9 5 L12 12 L15 5 L18 12 L21 5 L24 12 L27 5 L30 12 L33 5 L36 12 L39 5 L42 12 L42 51 Q42 55 38 55 L10 55 Q6 55 6 51 Z" fill="#ff8a3d" stroke="#5a2d12" stroke-width="2" stroke-linejoin="round"/>
