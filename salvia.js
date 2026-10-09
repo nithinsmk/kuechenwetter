@@ -20,7 +20,8 @@ const ON_THE_HILL = 2.5; // and 2.5 times her first size on the hill too
 const WHITE = new THREE.Color('#f4f3ef');
 const SHADE = new THREE.Color('#d9d8dc');
 const EAR = new THREE.Color('#c7b3b8');
-const EYE = new THREE.Color('#8dbb4f');
+const AQUA = new THREE.Color('#5fe0d0');
+const EMERALD = new THREE.Color('#1f8a4c');
 const PUPIL = new THREE.Color('#1d1d1b');
 const NOSE = new THREE.Color('#c98a92');
 
@@ -37,14 +38,14 @@ const EARS = [
   { c: [0.14, 0.3, 0.05], r: [0.065, 0.085, 0.03], n: 140, tilt: -0.35 },
   { c: [-0.14, 0.3, 0.05], r: [0.065, 0.085, 0.03], n: 140, tilt: 0.35 },
 ];
-const FACE = [ // eyes, pupils, nose
-  { c: [0.085, 0.15, 0.285], r: [0.042, 0.032, 0.015], n: 30, color: EYE, size: 0.018 },
-  { c: [-0.085, 0.15, 0.285], r: [0.042, 0.032, 0.02], n: 30, color: EYE, size: 0.018 },
-  { c: [0.085, 0.15, 0.302], r: [0.01, 0.026, 0.006], n: 8, color: PUPIL, size: 0.01 },
-  { c: [-0.085, 0.15, 0.302], r: [0.01, 0.026, 0.008], n: 8, color: PUPIL, size: 0.01 },
+const FACE = [ // eyes (her left aquamarine, her right emerald), slit pupils, glints, nose
+  { c: [0.085, 0.15, 0.285], r: [0.05, 0.042, 0.015], n: 40, color: AQUA, size: 0.02 },
+  { c: [-0.085, 0.15, 0.285], r: [0.05, 0.042, 0.015], n: 40, color: EMERALD, size: 0.02 },
+  { c: [0.085, 0.15, 0.305], r: [0.011, 0.03, 0.005], n: 10, color: PUPIL, size: 0.01 },
+  { c: [-0.085, 0.15, 0.305], r: [0.011, 0.03, 0.005], n: 10, color: PUPIL, size: 0.01 },
   { c: [0, 0.08, 0.3], r: [0.022, 0.015, 0.01], n: 10, color: NOSE, size: 0.012 },
-  { c: [0.105, 0.17, 0.31], r: [0.004, 0.004, 0.002], n: 3, color: new THREE.Color('#ffffff'), size: 0.009 },
-  { c: [-0.065, 0.17, 0.31], r: [0.004, 0.004, 0.002], n: 3, color: new THREE.Color('#ffffff'), size: 0.009 },
+  { c: [0.105, 0.172, 0.312], r: [0.004, 0.004, 0.002], n: 3, color: new THREE.Color('#ffffff'), size: 0.01 },
+  { c: [-0.065, 0.172, 0.312], r: [0.004, 0.004, 0.002], n: 3, color: new THREE.Color('#ffffff'), size: 0.01 },
 ];
 const TAIL = [ // around the tail pivot, a bushy plume going back and up
   { c: [0, 0.02, -0.08], r: [0.09, 0.09, 0.12], n: 220 },
@@ -148,10 +149,11 @@ function buildCartoon() {
 
   add(r.head, ball(2), fur, [0, 0.16, 0.12], [0.3, 0.28, 0.26]);
   for (const side of [1, -1]) {
+    const iris = side > 0 ? AQUA : EMERALD;
     add(r.head, new THREE.ConeGeometry(0.09, 0.18, 4), fur, [side * 0.17, 0.42, 0.06], [1, 1, 0.7], [0, Math.PI / 4, -side * 0.35]);
     add(r.head, new THREE.ConeGeometry(0.055, 0.12, 4), material('#e4b3a6'), [side * 0.165, 0.41, 0.11], [1, 1, 0.4], [0, Math.PI / 4, -side * 0.35]);
-    add(r.eyes, ball(1), material('#5a78b8', 0.3), [side * 0.11, 0.17, 0.365], [0.075, 0.08, 0.035]);
-    add(r.eyes, ball(1), material(PUPIL, 0.2), [side * 0.11, 0.17, 0.392], [0.035, 0.062, 0.02]);
+    add(r.eyes, ball(1), material(iris, 0.3), [side * 0.11, 0.17, 0.365], [0.08, 0.085, 0.035]);
+    add(r.eyes, ball(1), material(PUPIL, 0.2), [side * 0.11, 0.17, 0.392], [0.022, 0.066, 0.02]);
     add(r.eyes, ball(0), material('#ffffff', 0.1), [side * 0.11 + 0.025, 0.205, 0.41], [0.016, 0.016, 0.01]);
   }
   add(r.head, ball(0), material('#b98a80'), [0, 0.09, 0.39], [0.025, 0.018, 0.015]);
@@ -168,31 +170,42 @@ function buildCartoon() {
   return r;
 }
 
-// Pixel art, 16 × 12, facing right. k outline, w white, s shade, p pink, e green eye.
+// Pixel art, 20 × 16, facing right: a Persian, flat-faced, with a big ruff, dense fur
+// (w white, s shade, f pale highlight) and a plumed tail. k outline, p pink, a aquamarine
+// eye, e emerald eye, d pupil, g glint.
 const PIXELS = {
   stand: [
-    '..........k...k.', '.........kpk.kpk', '.........kwwwwwk', '.........kwewewk',
-    '.kk......kwwpwwk', '.kwk.kkkkkwwwwk.', '..kwkwwwwwwwwwk.', '...kwwwwwwwwwsk.',
-    '...kswwwwwwwwsk.', '....kssssssssk..', '....kwk...kwk...', '....kwwk..kwwk..'],
+    '.............kk.kk..', '............kpkkpk..', '...........kwfwwfwk.', '..........kwwswwswk.',
+    '.kkk......kwadgedwk.', '.kwwk.....kwwwpwwwk.', '..kwwk..kkkwsfswfsk.', '...kwfkkwswwwwwwwsk.',
+    '....kwwwwfwwswwfsk..', '....kwswwwwwswwwk...', '....kwwwfswwwwfwk...', '.....kswwwwswwsk....',
+    '.....kssssssssk.....', '.....kwwk..kwwk.....', '.....kwwk..kwwk.....', '.....kkkk..kkkk.....'],
   walk: [
-    '..........k...k.', '.........kpk.kpk', '.........kwwwwwk', '.........kwewewk',
-    '.kk......kwwpwwk', '.kwk.kkkkkwwwwk.', '..kwkwwwwwwwwwk.', '...kwwwwwwwwwsk.',
-    '...kswwwwwwwwsk.', '....kssssssssk..', '...kwk.....kwk..', '...kwwk....kwwk.'],
+    '.............kk.kk..', '............kpkkpk..', '...........kwfwwfwk.', '..........kwwswwswk.',
+    '.kkk......kwadgedwk.', '.kwwk.....kwwwpwwwk.', '..kwwk..kkkwsfswfsk.', '...kwfkkwswwwwwwwsk.',
+    '....kwwwwfwwswwfsk..', '....kwswwwwwswwwk...', '....kwwwfswwwwfwk...', '.....kswwwwswwsk....',
+    '.....kssssssssk.....', '....kwwk....kwwk....', '...kwwk......kwwk...', '...kkkk......kkkk...'],
   walk2: [
-    '..........k...k.', '.........kpk.kpk', '.........kwwwwwk', '.........kwewewk',
-    '.kk......kwwpwwk', '.kwk.kkkkkwwwwk.', '..kwkwwwwwwwwwk.', '...kwwwwwwwwwsk.',
-    '...kswwwwwwwwsk.', '....kssssssssk..', '.....kwk.kwk....', '.....kwwkkwwk...'],
+    '.............kk.kk..', '............kpkkpk..', '...........kwfwwfwk.', '..........kwwswwswk.',
+    '.kkk......kwadgedwk.', '.kwwk.....kwwwpwwwk.', '..kwwk..kkkwsfswfsk.', '...kwfkkwswwwwwwwsk.',
+    '....kwwwwfwwswwfsk..', '....kwswwwwwswwwk...', '....kwwwfswwwwfwk...', '.....kswwwwswwsk....',
+    '.....kssssssssk.....', '......kwwkkwwk......', '.......kwwkwwk......', '.......kkkkkkk......'],
+  rear: [
+    '...........kk.kk....', '..........kpkkpk....', '.........kwfwwfwk...', '........kwwswwswk...',
+    '........kwadgedwk...', '........kwwwpwwwkk..', '.......kwsfswfskwwk.', '......kwwwwwwwwkwk..',
+    '.....kwswwfwwwsk....', '.kk..kwwwwswwfwk....', '.kwk.kwwswwwwwsk....', '..kwkkwwwfwwwwk.....',
+    '...kwkwsswwswk......', '....kkwwwwwwk.......', '.....kwwkkwwk.......', '.....kkkk.kkk.......'],
   sleep: [
-    '................', '................', '................', '................',
-    '................', '..........k..k..', '.....kkkkkwkkwk.', '...kkwwwwwwwwwwk',
-    '..kwwwwwwwwkwkwk', '.kwwwwwwwwwwwpwk', '.kswwwwwwwwwwwsk', '..kkkkkkkkkkkkk.'],
+    '....................', '....................', '....................', '....................',
+    '....................', '....................', '..............kk.kk.', '.......kkkkkkkwkkwk.',
+    '.....kkwwfwwswwwwwwk', '....kwwwwwwwwwwadgek', '...kwswwfwwsfwwwwpwk', '..kwwwwwwwwwwwwwwwk.',
+    '..kwfwwswwwwfwwwwsk.', '..kswwwwwwwwwwwwssk.', '...kkkkkkkkkkkkkkk..', '....................'],
 };
-const INK = { k: '#55555a', w: '#f6f6f3', s: '#d3d3d8', p: '#e6a3ad', e: '#86b54a' };
+const INK = { k: '#55555a', w: '#f6f6f3', s: '#d3d3d8', f: '#ffffff', p: '#e6a3ad', a: '#5fe0d0', e: '#1f8a4c', d: '#1a1a1a', g: '#ffffff' };
 
 function pixelTexture(rows) {
   const canvas = document.createElement('canvas');
-  canvas.width = 16;
-  canvas.height = 12;
+  canvas.width = 20;
+  canvas.height = 16;
   const ctx = canvas.getContext('2d');
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
     if (INK[ch]) { ctx.fillStyle = INK[ch]; ctx.fillRect(x, y, 1, 1); }
@@ -209,8 +222,8 @@ function buildPixel() {
   const textures = Object.fromEntries(Object.entries(PIXELS).map(([k, rows]) => [k, pixelTexture(rows)]));
   const material = new THREE.SpriteMaterial({ map: textures.stand, transparent: true });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(1.45, 1.1, 1);
-  sprite.position.y = 0.55;
+  sprite.scale.set(1.6, 1.28, 1);
+  sprite.position.y = 0.64;
   r.root.add(sprite);
   r.body.visible = false; // the sprite stands in for the whole rig
   r.sprite = { sprite, material, textures };
@@ -557,14 +570,14 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
 
     if (cat.sprite) {
       const { material, textures } = cat.sprite;
-      material.map = state.name === 'sleep' ? textures.sleep
+      material.map = state.name === 'sleep' ? textures.sleep : rearing ? textures.rear
         : walking ? (Math.sin(t * (state.name === 'run' ? 18 : 9)) > 0 ? textures.walk : textures.walk2) : textures.stand;
       // Face left or right on screen, whichever way she's heading.
       facing.set(Math.sin(holder.rotation.y), 0, Math.cos(holder.rotation.y)).add(holder.position).project(camera);
       there.copy(holder.position).project(camera);
       material.map.repeat.x = facing.x < there.x ? -1 : 1;
       material.map.offset.x = facing.x < there.x ? 1 : 0;
-      cat.sprite.sprite.position.y = state.name === 'sleep' ? 0.4 : 0.55;
+      cat.sprite.sprite.position.y = state.name === 'sleep' ? 0.45 : 0.64;
     }
   }
 
