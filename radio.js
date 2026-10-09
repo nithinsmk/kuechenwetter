@@ -3,6 +3,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_KEY, AUDIO_URL } from './config.js';
 import { SCAN_DIR, createStage, progressText } from './scan.js';
 import { makeBroadcast } from './broadcast.js';
+import { mountWheel } from './wheel.js';
 
 const WEATHERS = ['fog_before_dawn', 'clearing_by_noon', 'showers_late_afternoon', 'humid_at_dusk', 'rain_after_midnight'];
 const STATION = 'Küchenwetter';
@@ -230,6 +231,9 @@ function stopListening() {
 $('leave').addEventListener('click', () => { stopListening(); renderWeathers(); });
 window.addEventListener('pagehide', () => channel.untrack());
 
+// The duty wheel listens on the same channel, so it joins before we subscribe.
+const wheel = mountWheel({ supabase, channel, corner: $('wheel-open'), dialog: $('wheel') });
+
 channel
   .on('presence', { event: 'sync' }, renderWeathers)
   // The keeper changed the song list: everyone reloads at once and stays in sync.
@@ -278,7 +282,7 @@ for (const button of document.querySelectorAll('#works button')) {
 if (new URLSearchParams(location.search).has('clean')) document.body.classList.add('clean');
 
 if (new URLSearchParams(location.search).has('debug')) {
-  window.kw = { audio, stage, broadcast, onAir: () => onAir(Date.now()), owners };
+  window.kw = { audio, stage, broadcast, onAir: () => onAir(Date.now()), owners, wheel };
 }
 
 renderWeathers();

@@ -63,6 +63,36 @@
     </div>
   </footer>
 
+  <!-- the duty wheel: small in the corner, big when tapped (wheel.js) -->
+  <button type="button" id="wheel-open" class="wheel-corner" aria-haspopup="dialog" aria-label="the duty wheel">
+    <svg aria-hidden="true"></svg>
+    <span data-wheel="time"></span>
+  </button>
+
+  <dialog id="wheel" aria-label="the duty wheel">
+    <svg class="wheel-big" role="group"></svg>
+    <p data-wheel="time"></p>
+    <p class="quiet">when your duty is done, drag your clip to Done.</p>
+    <p data-wheel="note" role="status"></p>
+    <div class="wheel-buttons">
+      <button type="button" class="log-button" data-wheel="log-toggle" aria-expanded="false" aria-controls="wheel-log">
+        <!-- a cartoon log: bark, a cut end with rings, one twig -->
+        <svg viewBox="0 0 48 28" width="36" height="21" aria-hidden="true">
+          <path d="M33 6 L37 1 M35 3.5 Q39 2 40 4" fill="none" stroke="#6b4423" stroke-width="1.6" stroke-linecap="round"/>
+          <ellipse cx="38.5" cy="1.8" rx="3" ry="1.6" fill="#7bb661" transform="rotate(-25 38.5 1.8)"/>
+          <rect x="9" y="5" width="34" height="19" rx="9.5" fill="#a26b3b" stroke="#5c3a1c" stroke-width="1.6"/>
+          <path d="M20 9 q5 2 10 0 M18 18 q6 2 12 0 M33 13 q3 1 6 0" fill="none" stroke="#5c3a1c" stroke-width="1.3" stroke-linecap="round"/>
+          <ellipse cx="10" cy="14.5" rx="6.5" ry="9.5" fill="#e8c38c" stroke="#5c3a1c" stroke-width="1.6"/>
+          <ellipse cx="10" cy="14.5" rx="4" ry="6" fill="none" stroke="#b5874f" stroke-width="1.1"/>
+          <ellipse cx="10" cy="14.5" rx="1.6" ry="2.6" fill="none" stroke="#b5874f" stroke-width="1"/>
+        </svg>
+        <span>log</span>
+      </button>
+      <form method="dialog"><button>close</button></form>
+    </div>
+    <ul data-wheel="log" id="wheel-log" class="wheel-log" hidden></ul>
+  </dialog>
+
   <dialog id="about" aria-labelledby="about-title">
     <h2 id="about-title">Küchenwetter</h2>
     <p>A radio station for one kitchen. Everyone listening hears the same song at the same moment. The day belongs to five weathers in turn, each with its own playlist, and نظيفة plays between them. Requests air the next day, if they air at all.</p>

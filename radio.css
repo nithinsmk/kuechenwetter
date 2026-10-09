@@ -266,3 +266,103 @@ body.clean footer { display: none !important; }
   color: var(--ink);
 }
 #request label.quiet { color: var(--muted); align-self: center; }
+
+/* --- the duty wheel: cardboard, marker and clothes clips, like the one on the fridge --- */
+
+@font-face {
+  font-family: "Caveat Brush";
+  src: url("fonts/caveat-brush-latin.woff2") format("woff2");
+  font-display: swap;
+}
+
+:root { --wheel: 150px; }
+@media (max-width: 600px) { :root { --wheel: 116px; } }
+
+#station { right: calc(16px + var(--wheel) + 8px); }
+
+.wheel-corner {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  right: 8px;
+  width: var(--wheel);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0;
+}
+
+.wheel-corner svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.25));
+}
+
+.wheel-corner span {
+  padding: 2px 6px;
+  background: var(--chip);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.wheel-corner:hover span,
+.wheel-corner:focus-visible span { color: var(--ink); }
+.wheel-corner .w-clip { cursor: inherit; }
+
+dialog#wheel { width: min(640px, calc(100% - 20px)); }
+#wheel svg { display: block; width: 100%; height: auto; touch-action: none; margin-bottom: 8px; }
+#wheel .quiet { color: var(--muted); }
+#wheel [data-wheel="note"]:empty { display: none; }
+.wheel-log { list-style: none; margin: 10px 0 0; padding: 0; color: var(--muted); }
+.wheel-log .w-last { margin-top: 6px; color: var(--ink); }
+
+.w-board { stroke: #9c7e55; stroke-width: 1.2; }
+.w-section, .w-line { stroke: #1d1a17; stroke-width: 2.2; }
+.w-section.over { fill: rgb(255 255 255 / 0.4); }
+.w-label, .w-title { font-family: "Caveat Brush", cursive; fill: #1d1a17; text-anchor: middle; }
+.w-label { font-size: 17px; }
+.w-title { font-size: 21px; }
+.w-arrows path { fill: none; stroke: #1d1a17; stroke-width: 1.5; }
+.w-magnet { fill: #e2573d; stroke: #b8432c; stroke-width: 1; }
+
+.w-clip { transition: transform 0.6s ease; cursor: grab; outline: none; }
+.w-clip.dragging { transition: none; cursor: grabbing; }
+.w-clip.free { cursor: default; }
+.w-wood { fill: #e3c79b; stroke: #8b6b40; stroke-width: 0.9; }
+.w-split { stroke: rgb(110 80 45 / 0.45); stroke-width: 0.8; }
+.w-spring { fill: #a3a8ad; stroke: #6f757b; stroke-width: 0.8; }
+.w-clip:focus-visible .w-wood { stroke: #1d1a17; stroke-width: 2.2; }
+.w-initial {
+  font-family: "Caveat Brush", cursive;
+  font-size: 18px;
+  fill: #2a2018;
+  text-anchor: middle;
+  dominant-baseline: central;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.6s ease;
+}
+.w-clip.dragging .w-initial { transition: none; }
+
+body.clean .wheel-corner { display: none !important; }
+
+.wheel-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+}
+.wheel-buttons form { margin: 0; }
+.log-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 6px;
+  border: 1px solid var(--ink);
+  background: var(--chip);
+}
+.log-button:hover,
+.log-button[aria-expanded="true"] { background: #f3e6cf; }
+.log-button svg { display: block; transition: transform 0.3s ease; }
+.log-button:hover svg { transform: rotate(-6deg); }
