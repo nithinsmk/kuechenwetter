@@ -6,6 +6,7 @@
 //
 // She measures the ground when a scan loads (rays cast down around the holder), so she
 // walks on the counter, or on whatever surface the scan has.
+import { speak } from './catspeak.js';
 import * as THREE from 'three';
 import { SplatMesh } from '@sparkjsdev/spark';
 import { plantGarden, shadowBlob } from './plants.js';
@@ -383,9 +384,10 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
   const bubble = document.createElement('p');
   bubble.id = 'salvia-says';
   bubble.hidden = true;
+  bubble.dir = 'auto'; // Arabic and Urdu read right to left
   document.body.append(bubble);
   let bubbleUntil = 0;
-  const say = (text, ms = 2600) => { bubble.textContent = text; bubbleUntil = performance.now() + ms; };
+  const say = (text, ms = 2600) => { bubble.textContent = speak(text); bubbleUntil = performance.now() + ms; };
 
   // --- the ground of the current scan ---
 
@@ -530,7 +532,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     const atFigure = ghostSpot();
     if (atFigure) options.push('spook', 'ghostnap');
     switch (pick(options)) {
-      case 'play': return walkTo(pick(ground.cells), false, () => { say(pick(['*wiggles*', '!', '*pounces at nothing*']), 1400); plan('pounce', 1200); });
+      case 'play': return walkTo(pick(ground.cells), false, () => { say(pick(['*wiggles*', '!', '*pounces at nothing*', '*zoomies*', '*chirps at a fly*']), 1400); plan('pounce', 1200); });
       case 'koi': return walkTo(pick(ground.cells), false, () => {
         if (Math.random() < 0.5) { say(pick(['*watches a koi*', '*eyes a koi*', '…fish.']), 2500); plan('sit', 3500); }
         else { say('*bats at a koi*', 1800); plan('bat', 1800); }
@@ -543,7 +545,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       });
       case 'wander': return walkTo(pick(ground.cells), false, nextActivity);
       case 'sniff': return walkTo(pick(ground.cells), false, () => { say('*sniff sniff*'); plan('sniff', 2500 + Math.random() * 2000); });
-      case 'checkin': return walkTo(nearHolder(), false, () => { say(pick(['mrrp', 'mrrp?', '*checks in*'])); plan('sit', 4000 + Math.random() * 3000); });
+      case 'checkin': return walkTo(nearHolder(), false, () => { say(pick(['mrrp', 'mrrp?', '*checks in*', 'meow', '*loaf mode*', '*pretends not to care*', '*sits on your song*'])); plan('sit', 4000 + Math.random() * 3000); });
       case 'plant':
         if (garden?.plants.length && (!ground.plantCell || Math.random() < 0.75)) return eatPlant(pick(garden.plants), false);
         return walkTo(ground.plantCell, false, () => { say(ground.plantWords ?? '*nom nom* (your plant)'); plan('eat', 5000 + Math.random() * 3000); });
@@ -586,7 +588,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     const start = edgeCell();
     holder.position.set(start[0], heightAt(start[0], start[1]), start[1]);
     holder.visible = true;
-    say(pick(['*appears*', 'mrrp', '*pads in*']));
+    say(pick(['*appears*', 'mrrp', '*pads in*', 'meow']));
     walkTo(nearHolder(), false, nextActivity);
   }
 
@@ -776,7 +778,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     }
     for (const plant of garden?.plants ?? []) plant.update(now);
     if (state.name === 'sleep' && Math.floor(t) % 4 === 0 && now > bubbleUntil) say('z z z', 1500);
-    if (state.name === 'friendly' && now > bubbleUntil) say(pick(['♥', 'prrrr ♥', '♥ ♥', '*headbutt*', '*slow blink*', 'prrrrrrr', '*rubs on you*']), 1700);
+    if (state.name === 'friendly' && now > bubbleUntil) say(pick(['♥', 'prrrr ♥', '♥ ♥', '*headbutt*', '*slow blink*', 'prrrrrrr', '*rubs on you*', '*loves you*', '*kneads the counter*', '*toe beans*', '*tail up, happy*']), 1700);
     // Purr the whole time she's being friendly.
     if ((state.name === 'friendly') !== purring) {
       purring = state.name === 'friendly';
