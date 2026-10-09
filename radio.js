@@ -8,6 +8,8 @@ import { floatTheGallery } from './floaters.js';
 import { makeSalvia } from './salvia.js';
 import { buildHill } from './hill.js';
 import { HAMSA, HAMSA_INK } from './hamsa.js';
+import { mountAquarium } from './aquarium.js';
+import { makeTheyyam } from './theyyam.js';
 import { crinkle, startPurr, stopPurr, hiss } from './sounds.js';
 
 const WEATHERS = ['fog_before_dawn', 'clearing_by_noon', 'showers_late_afternoon', 'humid_at_dusk', 'rain_after_midnight'];
@@ -52,13 +54,22 @@ const salvia = makeSalvia({
   // Pet her ten times in a row and the kitchen gives way to the hill for a few minutes.
   onTenPets: () => { hillUntil = Date.now() + 4 * 60 * 1000; showHill(); },
   onPurring: (on) => (on ? startPurr() : stopPurr()),
+  // When she naps in the spoon corner, he sometimes comes and lies down beside her.
+  onGhostNap: () => { if (Math.random() < 0.5) callTheyyam('sleep'); },
   onHiss: hiss,
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopPurr(); });
 
 // The hamsa: each tap swivels round to the figure's side of the counter and plays
 // the next of its scenes (for trying them out).
-const FIGURE_VIEW = { from: [0.95, 0.42, 0.55], to: [-0.45, 0.1, -0.25] };
+const FIGURE_VIEW = { from: [-0.6, 0.36, 0.4], to: [-1.03, 0.07, -0.12] }; // the spoon corner by the dish rack
+const SPOON_WIDE = { from: [-0.08, 0.71, 1.02], to: [-1.03, 0.07, -0.12] }; // further back, the spoon corner still in the middle
+let zoomedIn = null; // set while the talisman has the camera up close
+function zoomOut() {
+  clearTimeout(zoomedIn);
+  zoomedIn = null;
+  flyTo(SPOON_WIDE, startSway);
+}
 let flight = null;
 function flyTo(view, after = () => { resumeSway = setTimeout(startSway, 12000); }) {
   sway = null;
@@ -73,7 +84,6 @@ const flyFrame = (time) => {
   controls.target.lerpVectors(flight.fromT, flight.toT, e);
   if (k === 1) { const { after } = flight; flight = null; after?.(); }
 };
-let hamsaTurn = 0;
 (function drawHamsa() {
   const px = 3;
   const rect = (x, y, c) => `<rect x="${x * px}" y="${y * px}" width="${px}" height="${px}" fill="${c}"/>`;
@@ -90,14 +100,30 @@ $('talisman').addEventListener('click', () => {
   endFollow();
   const t = $('talisman');
   t.classList.remove('now'); void t.offsetWidth; t.classList.add('now');
-  if (showing !== 'hill') flyTo(FIGURE_VIEW);
-  const scenes = [
-    () => { salvia.investigate(); return 'she goes to look'; },
-    () => { salvia.spook(); return 'the spook'; },
-    () => { salvia.ghostnap(); return 'a nap by the figure, and a visitor'; },
-  ];
-  scenes[hamsaTurn++ % scenes.length]();
+  if (showing === 'hill' || !theyyamSpot()) return;
+  // Salvia goes to the spoon corner; half the time the Theyyam comes out.
+  flyTo(FIGURE_VIEW);
+  salvia.investigate();
+  // Back out to the wide view once he's gone (or after a while, if he doesn't come).
+  clearTimeout(zoomedIn);
+  if (Math.random() < 0.5) {
+    zoomedIn = setTimeout(() => { if (!theyyam.busy) zoomOut(); }, 6000);
+    setTimeout(() => callTheyyam(), 2500);
+  } else zoomedIn = setTimeout(zoomOut, 9000);
 });
+
+// --- the Theyyam (theyyam.js): visits the spoon corner, privately, on this screen ---
+let currentItem = null;
+function theyyamSpot() {
+  const sp = currentItem?.spoon;
+  return sp && showing !== 'hill' ? { at: sp.at, bowl: new THREE.Vector3(...sp.bowl), handle: new THREE.Vector3(...sp.handle) } : null;
+}
+function callTheyyam(kind) {
+  const spot = theyyamSpot();
+  if (spot && !theyyam.busy) theyyam.visit(spot, kind);
+}
+// Very occasionally he comes by on his own.
+setInterval(() => { if (!document.hidden && Math.random() < 0.05) callTheyyam(); }, 60 * 1000);
 
 // The treat packet: shake it (crinkle, crinkle) and Salvia comes running.
 $('treats').addEventListener('click', () => {
@@ -178,7 +204,10 @@ function followFrame(time) {
   camera.lookAt(controls.target);
 }
 
+const theyyam = makeTheyyam({ scene: stage.scene, camera, canvas: stage.renderer.domElement, salvia, onLeave: () => { if (zoomedIn) zoomOut(); } });
+
 stage.onFrame = (time) => {
+  theyyam.update(time);
   swayFrame(time);
   flyFrame(time);
   followFrame(time);
@@ -234,6 +263,8 @@ async function showScan(date, byHand = false) {
   if (!item) return;
   if (byHand) { chosen = true; hillUntil = 0; }
   showing = date;
+  currentItem = item;
+  clearTimeout(zoomedIn); zoomedIn = null; theyyam.stop();
   for (const b of $('dates').children) b.setAttribute('aria-current', String(b.dataset.date === date));
   show($('work'), item.title || '');
   await display(item, 'the kitchen');
@@ -441,6 +472,8 @@ window.addEventListener('pagehide', () => channel.untrack());
 
 // The duty wheel listens on the same channel, so it joins before we subscribe.
 const wheel = mountWheel({ supabase, channel, corner: $('wheel-open'), dialog: $('wheel') });
+// The aquarium (aquarium.js) floods every open radio together, on the same channel.
+const aquarium = mountAquarium({ button: $('bowl'), channel, salvia });
 
 channel
   .on('presence', { event: 'sync' }, renderWeathers)
@@ -487,7 +520,7 @@ $('about-open').addEventListener('click', () => $('about').showModal());
 if (new URLSearchParams(location.search).has('clean')) document.body.classList.add('clean');
 
 if (new URLSearchParams(location.search).has('debug')) {
-  window.kw = { audio, stage, broadcast, onAir: () => onAir(Date.now()), owners, wheel, salvia, showHill, hillHour, inHillHour };
+  window.kw = { audio, stage, broadcast, onAir: () => onAir(Date.now()), owners, wheel, salvia, showHill, hillHour, inHillHour, aquarium, theyyam, callTheyyam };
 }
 
 renderWeathers();

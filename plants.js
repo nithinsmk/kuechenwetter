@@ -192,22 +192,20 @@ function grow(kind, rng, size) {
 
 // Plants go a little way out from the holder (or the hill's crest), spread apart,
 // on ground she can walk on. The same scene always gets the same garden.
-export function plantGarden(ground, key, camera) {
+export function plantGarden(ground, key) {
   const rng = seeded(key);
   const { size, holderAt, cells } = ground;
   const [hx, hz] = holderAt;
+  // Keep the spoon corner (where the Theyyam comes) clear.
+  const clear = (c) => !ground.ghost || Math.hypot(c[0] - ground.ghost[0], c[1] - ground.ghost[2]) > 0.5;
   const ring = cells.filter((c) => {
     const d = Math.hypot(c[0] - hx, c[1] - hz);
-    return d > size * 2.2 && d < size * 9;
+    return d > size * 2.2 && d < size * 9 && clear(c);
   });
-  // On the side facing the viewer, and inside the frame, so they're seen and tappable.
-  const toCamera = new THREE.Vector2(camera.position.x - hx, camera.position.z - hz).normalize();
-  const ndc = new THREE.Vector3();
-  const seen = ring.filter((c) => {
-    const away = new THREE.Vector2(c[0] - hx, c[1] - hz).normalize();
-    ndc.set(c[0], c[2] + size, c[1]).project(camera);
-    return away.dot(toCamera) > 0.2 && Math.abs(ndc.x) < 0.8 && ndc.y > -0.9 && ndc.y < 0.45;
-  });
+  // On the side facing the radio's default view (the scans are framed from this
+  // direction), so they're seen and tappable, and the same every visit.
+  const toCamera = new THREE.Vector2(0.55, 1).normalize();
+  const seen = ring.filter((c) => new THREE.Vector2(c[0] - hx, c[1] - hz).normalize().dot(toCamera) > 0.25);
   const candidates = seen.length >= 12 ? seen : ring;
   const group = new THREE.Group();
   const plants = [];

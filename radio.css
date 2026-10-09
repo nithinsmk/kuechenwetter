@@ -360,7 +360,7 @@ body.clean .wheel-corner { display: none !important; }
 #work { color: var(--muted); }
 
 /* the gallery link: a clear button, with little scanned things turning above it */
-.links { padding-top: 66px; align-items: flex-end; }
+.links { padding-top: 70px; align-items: flex-end; }
 
 #gallery-link {
   position: relative;
@@ -396,7 +396,7 @@ body.clean .wheel-corner { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .floater { animation: none; } }
 body.clean .floater { display: none !important; }
 #dates { flex-wrap: nowrap; flex-shrink: 0; }
-.links { justify-content: flex-end; }
+.links { justify-content: flex-start; }
 
 /* what Salvia says, hanging over her for a moment */
 #salvia-says {
@@ -470,7 +470,6 @@ body.clean #viewbar { display: none; }
 @media (prefers-reduced-motion: reduce) { #talisman .turn, #talisman svg, #talisman .eye { animation: none; } }
 
 /* the scan title steps aside for the hamsa above the treats */
-#work { margin-left: 52px; }
 
 /* the gallery, over the radio */
 #gallery-frame {
@@ -485,3 +484,99 @@ body.clean #viewbar { display: none; }
   transition: opacity 0.45s ease;
 }
 #gallery-frame.open { opacity: 1; }
+
+/* --- the aquarium --- */
+#bowl { pointer-events: auto; padding: 0 0 2px; align-self: flex-end; }
+#bowl svg { display: block; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.3)); }
+#bowl:hover svg { transform: rotate(-6deg); }
+
+#water { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+#water .body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--level, 0) * 25%);
+  transition: height 1.6s cubic-bezier(0.3, 0.7, 0.3, 1);
+  background:
+    repeating-linear-gradient(115deg, rgb(255 255 255 / 0.07) 0 18px, transparent 18px 70px),
+    linear-gradient(to bottom, rgb(140 220 240 / 0.38), rgb(35 120 190 / 0.55));
+  background-size: 400px 100%, 100% 100%;
+  animation: light-sway 9s linear infinite;
+}
+#water .surface {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -15px;
+  height: 16px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='16' viewBox='0 0 120 16'%3E%3Cpath d='M0 9 Q15 2 30 9 T60 9 T90 9 T120 9 V16 H0 Z' fill='rgb(150,226,245)' fill-opacity='0.55'/%3E%3Cpath d='M0 9 Q15 2 30 9 T60 9 T90 9 T120 9' fill='none' stroke='white' stroke-opacity='0.85' stroke-width='2'/%3E%3C/svg%3E") repeat-x;
+  background-size: 120px 16px;
+  animation: wave 3s linear infinite;
+}
+#water:not(.wet) .surface { display: none; }
+#water .pond { position: absolute; inset: 0; }
+#water .koi { position: absolute; left: 0; top: 0; transform-origin: center; }
+#water .koi canvas { display: block; width: 100%; image-rendering: pixelated; }
+#water .koi canvas:first-child { animation: tail-a 0.5s steps(1) infinite; }
+#water .koi .tail-b { position: absolute; inset: 0; animation: tail 0.5s steps(1) infinite; }
+#water .bubble {
+  position: absolute;
+  border: 1.5px solid rgb(255 255 255 / 0.85);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgb(255 255 255 / 0.8) 0 18%, rgb(255 255 255 / 0.12) 30%);
+  animation: rise linear forwards;
+}
+@keyframes wave { to { background-position: 120px 0; } }
+@keyframes light-sway { to { background-position: 400px 0, 0 0; } }
+@keyframes tail { 50%, 100% { opacity: 0; } }
+@keyframes tail-a { 0% { opacity: 0; } 50%, 100% { opacity: 1; } }
+@keyframes rise {
+  25% { translate: var(--drift) calc(var(--rise) * -0.25); }
+  50% { translate: calc(var(--drift) * -1) calc(var(--rise) * -0.5); }
+  75% { translate: var(--drift) calc(var(--rise) * -0.75); }
+  to { translate: 0 calc(var(--rise) * -1); opacity: 0.6; }
+}
+body.clean #water { display: none; }
+
+/* --- the four corners: radio top left; wheel and follow top right;
+   requests, site links and scans bottom left; toys bottom right --- */
+footer { right: calc(16px + 112px); align-items: flex-start; }
+footer .links { display: flex; gap: 8px; }
+#leave { pointer-events: auto; width: fit-content; padding: 2px 6px; background: var(--chip); color: var(--muted); }
+#leave:hover { color: var(--ink); }
+
+#viewbar.under-wheel {
+  position: fixed;
+  top: calc(max(8px, env(safe-area-inset-top)) + var(--wheel) * 0.83 + 30px);
+  right: 8px;
+  margin: 0;
+  padding: 2px 6px;
+  background: var(--chip);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+#toys {
+  position: fixed;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+#toys #talisman { left: auto; right: 34px; }
+body.clean #toys { display: none !important; }
+#bowl.slosh svg { animation: slosh 0.5s ease; }
+@keyframes slosh { 25% { transform: rotate(-12deg); } 60% { transform: rotate(9deg); } }
+@media (max-width: 600px) {
+  #viewbar.under-wheel { width: calc(var(--wheel) + 8px); flex-wrap: wrap; white-space: normal; justify-content: flex-end; gap: 4px; }
+}
+
+/* the Theyyam's arrival: a silent pixel bolt and a white flash; his z z z */
+.strike { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 6; pointer-events: none; filter: drop-shadow(0 0 6px #9ff0ff); animation: strike 0.7s steps(3) forwards; }
+@keyframes strike { 60% { opacity: 1; } to { opacity: 0; } }
+.strike-flash { position: fixed; inset: 0; z-index: 5; pointer-events: none; background: #fff; animation: flash 0.5s ease-out forwards; }
+@keyframes flash { from { opacity: 0.65; } to { opacity: 0; } }
+.theyyam-z { position: fixed; z-index: 4; transform: translate(-50%, -100%); pointer-events: none; padding: 0 4px; background: var(--chip); font-size: 11px; animation: z-rise 2.4s ease-out forwards; }
+@keyframes z-rise { to { translate: 6px -24px; opacity: 0; } }

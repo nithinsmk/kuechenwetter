@@ -10,8 +10,9 @@ import * as THREE from 'three';
 import { SplatMesh } from '@sparkjsdev/spark';
 import { plantGarden, shadowBlob } from './plants.js';
 import { hamsaCanvas } from './hamsa.js';
+import { catFrames, frameCanvas } from './pixelcat.js';
 
-const FORMS = ['splat', 'pixel', 'cartoon'];
+const FORMS = ['persian', 'splat', 'pixel', 'cartoon']; // the 8-bit Persian (pixelcat.js) is her default
 const CAT_HEIGHT = 1.05; // in cat units, ears included
 const OF_HOLDER = 2.5 / 8; // her height against the cutlery holder's (first an eighth, now 2.5 times that)
 const ON_THE_HILL = 2.5; // and 2.5 times her first size on the hill too
@@ -206,7 +207,7 @@ function buildCartoon() {
 // The body, rows 0–12 (collar 'c' under the chin); legs and the pendant are added per frame.
 const BODY_PIXELS = [
   '.............kk.kk..', '............kpkkpk..', '...........kwfwwfwk.', '..........kwwswwswk.',
-  '.kkk......kwadgedwk.', '.kwwk.....kwwwpwwwk.', '..kwwk..kkkwsfswfsk.', '...kwfkkwswccccccsk.',
+  '.kkk......kwadgedwk.', '.kwwk.....kwwwpwwwk.', '..kwwk..kkkwsfswfsk.', '...kwfkkwswwwwwwwsk.',
   '....kwwwwfwwswwfsk..', '....kwswwwwwswwwk...', '....kwwwfswwwwfwk...', '.....kswwwwswwsk....',
   '.....kssssssssk.....',
 ];
@@ -228,10 +229,20 @@ function pixelFrame({ nb = 0, fb = 0, nf = 0, ff = 0, lift = '', charm = [0, 0] 
   pixelLeg(rows, 13, ff, 's', lift.includes('f'));
   pixelLeg(rows, 5, nb, 'w', lift.includes('B'));
   pixelLeg(rows, 10, nf, 'w', lift.includes('F'));
-  const [dx, dy] = charm; // the hamsa on her chest, swinging
-  paint(rows, 14 + dx, 8 + dy, 'h');
-  paint(rows, 13 + dx, 9 + dy, 'owo');
-  paint(rows, 14 + dx, 10 + dy, 'o');
+  // The collar curves round the neck: down from the nape, under the chin, up to the throat,
+  // with a darker underside.
+  paint(rows, 10, 6, 'c');
+  paint(rows, 11, 7, 'cc');
+  paint(rows, 13, 8, 'ccc');
+  paint(rows, 16, 7, 'c');
+  paint(rows, 17, 6, 'c');
+  paint(rows, 11, 8, 'CC');
+  paint(rows, 13, 9, 'CCC');
+  paint(rows, 16, 8, 'C');
+  const [dx, dy] = charm; // the hamsa hanging from the lowest point, swinging
+  paint(rows, 14 + dx, 9 + dy, 'h');
+  paint(rows, 13 + dx, 10 + dy, 'owo');
+  paint(rows, 14 + dx, 11 + dy, 'o');
   return rows;
 }
 const PIXELS = {
@@ -243,10 +254,12 @@ const PIXELS = {
   rear: (() => {
     const rows = [
       '...........kk.kk....', '..........kpkkpk....', '.........kwfwwfwk...', '........kwwswwswk...',
-      '........kwadgedwk...', '........kwwwpwwwkk..', '.......kwsccccccwwk.', '......kwwwwwwwwkwk..',
+      '........kwadgedwk...', '........kwwwpwwwkk..', '.......kwsfswfskwwk.', '......kwwwwwwwwkwk..',
       '.....kwswwfwwwsk....', '.kk..kwwwwswwfwk....', '.kwk.kwwswwwwwsk....', '..kwkkwwwfwwwwk.....',
       '...kwkwsswwswk......', '....kkwwwwwwk.......', '.....kwwkkwwk.......', '.....kkkk.kkk.......'];
-    paint(rows, 12, 7, 'h'); paint(rows, 11, 8, 'owo'); paint(rows, 12, 9, 'o');
+    paint(rows, 8, 6, 'c'); paint(rows, 9, 7, 'cc'); paint(rows, 11, 7, 'cc'); paint(rows, 13, 6, 'cc');
+    paint(rows, 9, 8, 'CCCC');
+    paint(rows, 11, 9, 'h'); paint(rows, 10, 10, 'owo'); paint(rows, 11, 11, 'o');
     return rows;
   })(),
   sleep: (() => {
@@ -255,17 +268,38 @@ const PIXELS = {
       '....................', '....................', '..............kk.kk.', '.......kkkkkkkwkkwk.',
       '.....kkwwfwwswwwwwwk', '....kwwwwwwwwwwadgek', '...kwswwfwwsfwwwwpwk', '..kwwwwwwwwwwwwwwwk.',
       '..kwfwwswwwwfwwwwsk.', '..kswwwwwwwwwwwwssk.', '...kkkkkkkkkkkkkkk..', '....................'];
-    for (let y = 8; y <= 11; y++) paint(rows, 13, y, 'c');
-    paint(rows, 12, 12, 'o');
+    paint(rows, 13, 8, 'c'); paint(rows, 12, 9, 'c'); paint(rows, 12, 10, 'c'); paint(rows, 13, 11, 'c');
+    paint(rows, 13, 9, 'C'); paint(rows, 13, 10, 'C');
+    paint(rows, 11, 11, 'o');
     return rows;
   })(),
 };
-const INK = { c: '#2f5fd0', h: '#c9d1dc', o: '#1d3fa8', k: '#55555a', w: '#f6f6f3', s: '#d3d3d8', f: '#ffffff', p: '#e6a3ad', a: '#5fe0d0', e: '#1f8a4c', d: '#1a1a1a', g: '#ffffff' };
+// Underwater: a glass dome over her head (three rows taller), with a highlight, a metal
+// rim on her collar and a tiny hamsa on top. [centre x, centre y, radius, rim row] per frame.
+const DOME = { rear: [13, 6, 5.6, 9], sleep: [16.5, 11.5, 4.2, 14] };
+function diverRows(name, rows) {
+  const out = ['.'.repeat(20), '.'.repeat(20), '.'.repeat(20), ...rows];
+  const [cx, cy, r, rim] = DOME[name] ?? [14.5, 6.5, 5.6, 10];
+  for (let y = 0; y < out.length; y++) {
+    for (let x = 0; x < 20; x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      const a = Math.atan2(y + 0.5 - cy, x + 0.5 - cx);
+      if (y < rim && Math.abs(d - r) < 0.55) paint(out, x, y, 'g');
+      else if (y < rim && d < r - 1 && d > r - 2.4 && a > -2.6 && a < -1.9) paint(out, x, y, 'H'); // the shine
+    }
+  }
+  for (let x = Math.ceil(cx - r + 0.5); x <= Math.floor(cx + r - 0.5); x++) paint(out, x, rim, 'G');
+  const top = Math.round(cy - r) - 1;
+  if (top >= 0) { paint(out, Math.floor(cx) - 1, top, 'hoh'); }
+  return out;
+}
+
+const INK = { g: 'rgba(200,240,252,0.9)', H: '#ffffff', G: '#8a96a6', c: '#3a6ae0', C: '#1d3a9a', h: '#c9d1dc', o: '#1d3fa8', k: '#55555a', w: '#f6f6f3', s: '#d3d3d8', f: '#ffffff', p: '#e6a3ad', a: '#5fe0d0', e: '#1f8a4c', d: '#1a1a1a', g: '#ffffff' };
 
 function pixelTexture(rows) {
   const canvas = document.createElement('canvas');
-  canvas.width = 20;
-  canvas.height = 16;
+  canvas.width = rows[0].length;
+  canvas.height = rows.length;
   const ctx = canvas.getContext('2d');
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
     if (INK[ch]) { ctx.fillStyle = INK[ch]; ctx.fillRect(x, y, 1, 1); }
@@ -280,21 +314,51 @@ function pixelTexture(rows) {
 function buildPixel() {
   const r = rig();
   const textures = Object.fromEntries(Object.entries(PIXELS).map(([k, rows]) => [k, pixelTexture(rows)]));
+  const diving = Object.fromEntries(Object.entries(PIXELS).map(([k, rows]) => [k, pixelTexture(diverRows(k, rows))]));
   const material = new THREE.SpriteMaterial({ map: textures.stand, transparent: true, alphaTest: 0.5 }); // clear pixels mustn't hide the scan
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(1.6, 1.28, 1);
   sprite.position.y = 0.64;
   r.root.add(sprite);
   r.body.visible = false; // the sprite stands in for the whole rig
-  r.sprite = { sprite, material, textures };
+  r.sprite = { sprite, material, textures, diving };
   return r;
 }
 
-const BUILD = { splat: buildSplat, pixel: buildPixel, cartoon: buildCartoon };
+// The 8-bit Persian: one sprite whose frame is chosen each moment by what she's doing
+// and which way she's facing relative to the camera (see pose()).
+let persianTextures = null;
+function persianFrames() {
+  if (persianTextures) return persianTextures;
+  const tex = (rows) => {
+    const t = new THREE.CanvasTexture(frameCanvas(rows));
+    t.magFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestFilter;
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  };
+  const { frames, diving } = catFrames();
+  const each = (set) => Object.fromEntries(Object.entries(set).map(([k, f]) => [k, tex(f.rows)]));
+  persianTextures = { frames: each(frames), diving: each(diving) };
+  return persianTextures;
+}
+function buildPersian() {
+  const r = rig();
+  const material = new THREE.SpriteMaterial({ map: persianFrames().frames.sideStand, transparent: true, alphaTest: 0.5 });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set((1.25 * 28) / 24, 1.25, 1);
+  sprite.position.y = 0.58;
+  r.root.add(sprite);
+  r.body.visible = false;
+  r.persian = { sprite, material };
+  return r;
+}
+
+const BUILD = { persian: buildPersian, splat: buildSplat, pixel: buildPixel, cartoon: buildCartoon };
 
 // --- the daemon ---
 
-export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss }) {
+export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss, onGhostNap }) {
   const holder = new THREE.Group(); // her place in the world: ground position and heading
   holder.visible = false;
   scene.add(holder);
@@ -332,7 +396,6 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     const id = ++measuring;
     quiet();
     uproot();
-    if (reaper) { scene.remove(reaper.g); reaper = null; }
     ground = null;
     holder.visible = false;
     // Rays only hit a scan once it has been drawn, so wait for drawn frames (which also
@@ -415,6 +478,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
   let state = { name: 'away', until: 0 };
   let purring = false;
   let pending = null; // a scene asked for before the ground was measured
+  let diving = false; // the kitchen's flooded: she's the pixel diver
+  let formBefore = 0;
   const quiet = () => { if (purring) { purring = false; onPurring?.(false); } };
 
   // Her little 8-bit plants (plants.js), planted wherever she's walking.
@@ -427,7 +492,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
   }
   function plantFor(key) {
     uproot();
-    garden = plantGarden(ground, key, camera);
+    garden = plantGarden(ground, key);
     scene.add(garden.group);
   }
   let target = null;
@@ -441,7 +506,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
   function walkTo(cell, fast, next) {
     target = new THREE.Vector2(cell[0], cell[1]);
     then = next;
-    speed = ground.size * (fast ? 6 : 1.8); // about a body length a second, more when running
+    speed = ground.size * (fast ? 6 : 1.8) * (diving ? 0.55 : 1); // about a body length a second, more when running; slower underwater
     plan(fast ? 'run' : 'walk', 60000);
   }
 
@@ -460,14 +525,21 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
   function nextActivity() {
     const options = ['wander', 'wander', 'sniff', 'sniff', 'checkin', 'sleep', 'runaway'];
     if (ground.plantCell || garden?.plants.length) options.push('plant', 'plant', 'plant');
+    if (diving) options.push('koi', 'koi', 'koi');
+    else options.push('play');
     const atFigure = ghostSpot();
     if (atFigure) options.push('spook', 'ghostnap');
     switch (pick(options)) {
+      case 'play': return walkTo(pick(ground.cells), false, () => { say(pick(['*wiggles*', '!', '*pounces at nothing*']), 1400); plan('pounce', 1200); });
+      case 'koi': return walkTo(pick(ground.cells), false, () => {
+        if (Math.random() < 0.5) { say(pick(['*watches a koi*', '*eyes a koi*', '…fish.']), 2500); plan('sit', 3500); }
+        else { say('*bats at a koi*', 1800); plan('bat', 1800); }
+      });
       case 'spook': return walkTo(atFigure, false, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); });
       case 'ghostnap': return walkTo(atFigure, false, () => {
         say('*curls up by it*');
-        plan('sleep', 30000 + Math.random() * 20000, { reaper: true });
-        setTimeout(() => { if (state.reaper && state.name === 'sleep') summonReaper(); }, 6000);
+        plan('sleep', 30000 + Math.random() * 20000);
+        setTimeout(() => { if (state.name === 'sleep') onGhostNap?.(); }, 4000);
       });
       case 'wander': return walkTo(pick(ground.cells), false, nextActivity);
       case 'sniff': return walkTo(pick(ground.cells), false, () => { say('*sniff sniff*'); plan('sniff', 2500 + Math.random() * 2000); });
@@ -494,72 +566,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     walkTo(spot, fast, () => { say(plant.words); plan('eat', 6000 + Math.random() * 3000, { plant, bite: 0, rear }); });
   }
 
-  // The grim reaper: he comes up out of the figure, glides over and lies down beside her.
-  let reaper = null;
-  // 8-bit: a voxel figure in a few colours, front view, 12 blocks tall.
-  const REAPER = [
-    '....kkkk....', '...kkkkkk...', '...kffffk...', '...kfeefk...', '...kffffk...', '..kkkkkkkk..',
-    '.kkkkkkkkkk.', '.kkkkkkkkkkh', '.kkkkkkkkkkh', '..kkkkkkkk.h', '..kkkkkkkk.h', '.kkkkkkkkkkh',
-  ];
-  const REAPER_INK = { k: '#15131a', f: '#2a2630', e: '#9be36a', h: '#5a4632' };
-  function buildReaper() {
-    const g = new THREE.Group();
-    const unit = (ground.size * 1.5) / REAPER.length;
-    const blocks = [];
-    REAPER.forEach((row, y) => [...row].forEach((ch, x) => { if (REAPER_INK[ch]) blocks.push([x - 5.5, REAPER.length - 1 - y + 0.5, 0, REAPER_INK[ch]]); }));
-    // the scythe blade, out to the right of the handle
-    for (let x = 0; x < 4; x++) blocks.push([6.5 + x, 11.5 - x * 0.5, 0, '#c2c6cf']);
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1.2), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), blocks.length);
-    const m = new THREE.Matrix4(); const col = new THREE.Color();
-    blocks.forEach(([x, y, z, c], n) => { mesh.setMatrixAt(n, m.makeTranslation(x, y, z)); mesh.setColorAt(n, col.set(c)); });
-    mesh.scale.setScalar(unit);
-    g.add(mesh);
-    const sh = shadowBlob(ground.size * 0.6); sh.position.y = 0.01; g.add(sh);
-    g.userData.height = ground.size * 1.5;
-    return g;
-  }
-  function summonReaper() {
-    if (reaper || !ground?.ghost) return;
-    const g = buildReaper();
-    g.position.set(ground.ghost[0], heightAt(ground.ghost[0], ground.ghost[2]), ground.ghost[2]);
-    scene.add(g);
-    reaper = { g, born: performance.now(), phase: 'rise', lie: 0 };
-    say('…', 800);
-  }
-  function updateReaper(now, dt) {
-    const { g } = reaper;
-    const h = g.userData.height;
-    if (reaper.phase === 'rise') {
-      const k = Math.min(1, (now - reaper.born) / 2500);
-      g.position.y = heightAt(g.position.x, g.position.z) - h * (1 - k) * 1.1;
-      g.rotation.y += dt * 0.3;
-      if (k >= 1) { reaper.phase = 'glide'; }
-    } else if (reaper.phase === 'glide') {
-      const side = new THREE.Vector2(Math.cos(holder.rotation.y), -Math.sin(holder.rotation.y)).multiplyScalar(ground.size * 1.3);
-      const aim = new THREE.Vector2(holder.position.x + side.x, holder.position.z + side.y);
-      const here = new THREE.Vector2(g.position.x, g.position.z);
-      const to = aim.clone().sub(here);
-      if (to.length() < ground.size * 0.2 || state.name !== 'sleep') reaper.phase = 'lie';
-      else {
-        here.add(to.normalize().multiplyScalar(Math.min(to.length(), ground.size * 1.2 * dt)));
-        g.position.set(here.x, heightAt(here.x, here.y) + Math.sin(now / 300) * ground.size * 0.03, here.y);
-        g.rotation.y = Math.atan2(to.x, to.y) + Math.PI;
-      }
-    } else if (reaper.phase === 'lie') {
-      reaper.lie = Math.min(1, reaper.lie + dt * 0.5);
-      g.rotation.z = -1.45 * reaper.lie;
-      g.rotation.y = holder.rotation.y;
-      if (Math.floor(now / 1000) % 5 === 0 && now > bubbleUntil) say('z z z   z z z', 1200);
-      if (state.name !== 'sleep') { reaper.phase = 'sink'; reaper.born = now; }
-    } else { // sink: back into the ground, gone
-      const k = Math.min(1, (now - reaper.born) / 2000);
-      g.position.y = heightAt(g.position.x, g.position.z) - h * k;
-      if (k >= 1) { scene.remove(g); g.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); }); reaper = null; }
-    }
-  }
-
-  // Where she goes to meet the figure: the walkable cell nearest it that's also on screen
-  // right now (the figure only shows from some angles), or nothing if it's out of view.
+  // Where she goes to meet the corner: the walkable cell nearest it that's also on screen
+  // right now, or nothing if it's out of view.
   function ghostSpot() {
     if (!ground?.ghost) return null;
     const ndc = new THREE.Vector3();
@@ -597,7 +605,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       leg.rotation.x = state.name === 'sleep' ? -1.4 : (i === 0 || i === 3 ? swing : -swing);
       leg.visible = state.name !== 'sleep' || cat.sprite;
     });
-    const rearing = state.name === 'eat' && state.rear;
+    const rearing = (state.name === 'eat' && state.rear) || state.name === 'bat';
     const spooked = state.name === 'spook' && state.phase > 0;
     const puff = spooked ? 1.3 : 1;
     body.scale.x = puff; body.scale.z = spooked ? 1.15 : 1;
@@ -635,9 +643,45 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       cat.pendant.rotation.z = walking ? swing * 0.4 : Math.sin(t * 1.7) * 0.06;
       cat.pendant.position.y = cat.pendantY + bounce * 0.012;
     }
+    if (cat.persian) {
+      const { sprite, material } = cat.persian;
+      const set = diving ? persianFrames().diving : persianFrames().frames;
+      // Which way she faces us: front coming towards the camera, back going away, else side.
+      const vx = camera.position.x - holder.position.x;
+      const vz = camera.position.z - holder.position.z;
+      const toward = (Math.sin(holder.rotation.y) * vx + Math.cos(holder.rotation.y) * vz) / (Math.hypot(vx, vz) || 1);
+      const view = toward > 0.55 ? 'front' : toward < -0.55 ? 'back' : 'side';
+      const step = Math.floor(t * (state.name === 'run' ? 12 : diving ? 4 : 7)) % 4;
+      let name;
+      let lift = 0;
+      if (state.name === 'sleep') name = 'sleep';
+      else if (rearing) name = 'rear';
+      else if (state.name === 'spook') name = state.phase > 0 ? 'spook' : 'sideLow';
+      else if (state.name === 'pounce') {
+        const age = (performance.now() - state.started) / 1000;
+        if (age < 0.45) name = 'crouch'; // the bum wiggle
+        else { name = 'pounce'; lift = Math.sin(Math.min(1, (age - 0.45) / 0.5) * Math.PI) * 0.38; }
+      } else if (sitting) name = 'sit';
+      else if (state.name === 'run' && view === 'side') { name = step % 2 ? 'pounce' : 'crouch'; lift = step % 2 ? 0.14 : 0; } // bounding
+      else if (walking) name = view === 'side' ? `side${step}` : `${view}${step % 2}`;
+      else if (state.name === 'sniff' || state.name === 'eat') name = view === 'side' ? 'sideLow' : `${view}Stand`;
+      else name = `${view}Stand`;
+      const map = set[name];
+      // Side frames face whichever way she's heading on screen.
+      facing.set(Math.sin(holder.rotation.y), 0, Math.cos(holder.rotation.y)).add(holder.position).project(camera);
+      there.copy(holder.position).project(camera);
+      const flip = !/^(front|back|sit)/.test(name) && facing.x < there.x;
+      map.repeat.x = flip ? -1 : 1;
+      map.offset.x = flip ? 1 : 0;
+      material.map = map;
+      sprite.scale.set((1.25 * 28) / 24, (1.25 * (diving ? 27 : 24)) / 24, 1);
+      sprite.position.y = 0.58 + lift + (walking && !lift && step % 2 ? 0.03 : 0)
+        + (diving ? (1.25 * 3) / 24 / 2 + Math.sin(t * 1.3) * 0.03 : 0);
+    }
     if (cat.sprite) {
-      const { material, textures, sprite } = cat.sprite;
-      const step = Math.floor(t * (state.name === 'run' ? 14 : 7)) % 4; // four frames to a stride
+      const { material, sprite } = cat.sprite;
+      const textures = diving ? cat.sprite.diving : cat.sprite.textures;
+      const step = Math.floor(t * (state.name === 'run' ? 14 : diving ? 4 : 7)) % 4; // four frames to a stride (slow and floaty underwater)
       material.map = state.name === 'sleep' ? textures.sleep : rearing ? textures.rear
         : walking ? textures[`walk${step}`] : textures.stand;
       sprite.material.rotation = walking ? (step % 2 ? 0 : (step === 0 ? 0.03 : -0.03)) : 0;
@@ -646,7 +690,9 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       there.copy(holder.position).project(camera);
       material.map.repeat.x = facing.x < there.x ? -1 : 1;
       material.map.offset.x = facing.x < there.x ? 1 : 0;
-      cat.sprite.sprite.position.y = (state.name === 'sleep' ? 0.45 : 0.64) + (walking && step % 2 ? 0.035 : 0); // up on the passing frames
+      cat.sprite.sprite.position.y = (state.name === 'sleep' ? 0.45 : 0.64) + (walking && step % 2 ? 0.035 : 0) // up on the passing frames
+        + (diving ? 0.12 + Math.sin(t * 1.3) * 0.03 : 0); // the taller diver frames, and a slow underwater bob
+      sprite.scale.y = diving ? 1.28 * 19 / 16 : 1.28;
     }
   }
 
@@ -692,6 +738,14 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       nextActivity();
     }
 
+    if (state.name === 'pounce') {
+      const age = (now - state.started) / 1000;
+      if (age > 0.45 && age < 0.95) {
+        const nx = holder.position.x + Math.sin(holder.rotation.y) * ground.size * 1.8 * dt;
+        const nz = holder.position.z + Math.cos(holder.rotation.y) * ground.size * 1.8 * dt;
+        if (ground.heightAt || Math.abs(heightAt(nx, nz) - ground.floor) < ground.size) holder.position.set(nx, heightAt(nx, nz), nz);
+      }
+    }
     if (state.name === 'spook') {
       // Face the figure; after a curious moment the fur goes up, a sidestep, a hiss, then she bolts.
       let turn = Math.atan2(ground.ghost[0] - holder.position.x, ground.ghost[2] - holder.position.z) - holder.rotation.y;
@@ -708,7 +762,6 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       }
       if (age > 5200) { say('*bolts*', 1200); walkTo(edgeCell(), true, () => { say('…', 1000); plan('sit', 3000); }); }
     }
-    if (reaper) updateReaper(now, dt);
     if (state.name === 'eat' && state.plant) {
       const { plant } = state;
       let turn = Math.atan2(plant.x - holder.position.x, plant.z - holder.position.z) - holder.rotation.y;
@@ -811,7 +864,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     const now = performance.now();
     pets = now - lastPet < 2000 ? pets + 1 : 1;
     lastPet = now;
-    becomeForm(formIndex + 1);
+    if (!diving) becomeForm(formIndex + 1);
     if (pets >= 10) {
       pets = 0;
       say('*PRRRRRRRRRR*', 2000);
@@ -824,7 +877,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
 
   const api = {
     enter: (object, focus, plant, ghost) => measure(object, focus, plant, ghost).catch((error) => console.warn('salvia:', error)),
-    leave: () => { measuring++; if (reaper) { scene.remove(reaper.g); reaper = null; } ground = null; holder.visible = false; bubble.hidden = true; quiet(); uproot(); },
+    leave: () => { measuring++; ground = null; holder.visible = false; bubble.hidden = true; quiet(); uproot(); },
     // A scene that knows its own ground: { heightAt, cells: [[x, z, y]], size, holderAt, plantCell? }.
     walkOn: (spec) => {
       measuring++;
@@ -884,6 +937,20 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     // Seen or not: hidden while the camera looks through her eyes.
     set seen(on) { if (cat) cat.root.visible = on; shadow.visible = on; },
     get size() { return ground?.size ?? 0; },
+    // Flooded: she becomes the pixel diver (whatever she was), and goes back after.
+    dive(on) {
+      if (on === diving) return;
+      if (on) { formBefore = formIndex; becomeForm(FORMS.indexOf('persian')); diving = true; say(pick(['*blub*', '*puts on her helmet*', 'blub blub']), 1800); }
+      else { diving = false; becomeForm(formBefore); }
+    },
+    // Where bubbles leave her helmet, in page coordinates (null when she's not diving).
+    helmetPoint() {
+      if (!diving || !holder.visible || !ground) return null;
+      there.copy(holder.position).add(new THREE.Vector3(0, ground.size * 1.35, 0)).project(camera);
+      if (there.z > 1) return null;
+      const rect = canvas.getBoundingClientRect();
+      return { x: rect.left + ((there.x + 1) / 2) * rect.width, y: rect.top + ((1 - there.y) / 2) * rect.height };
+    },
     get pixelFrames() { return cat?.sprite?.textures ?? null; }, // for checking the drawings
     get state() { return state.name; },
     get plants() { return garden?.plants ?? []; },
@@ -902,7 +969,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       walkTo(ghostSpot() ?? ground.ghostCell, false, () => { say(pick(['*sniff*', '*stares at it*', 'hm.']), 2000); plan('sniff', 2500, { figure: true }); });
     },
     spook: () => { if (!ground) { pending = () => api.spook(); return; } if (ground.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); }); } },
-    ghostnap: () => { if (!ground) { pending = () => api.ghostnap(); return; } if (ground.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { plan('sleep', 40000, { reaper: true }); setTimeout(summonReaper, 1500); }); } },
+    ghostnap: () => { if (!ground) { pending = () => api.ghostnap(); return; } if (ground.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { plan('sleep', 40000); onGhostNap?.(); }); } },
   };
   return api;
 }

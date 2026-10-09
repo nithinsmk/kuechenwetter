@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>pixel Salvia, all frames</title>
+  <!-- A contact sheet of pixelcat.js: every frame, normal and diving, drawn large. -->
+  <style>
+    body { margin: 16px; background: #a5714c; font: 12px monospace; color: #fff; }
+    .row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
+    figure { margin: 0; text-align: center; }
+    canvas { display: block; width: 168px; image-rendering: pixelated; background: rgb(0 0 0 / 0.08); }
+  </style>
+</head>
+<body>
+  <div class="row" id="frames"></div>
+  <div class="row" id="diving"></div>
+  <script type="module">
+    import { catFrames, frameCanvas } from '../pixelcat.js';
+    const { frames, diving } = catFrames();
+    for (const [where, set] of [['frames', frames], ['diving', diving]]) {
+      for (const [name, f] of Object.entries(set)) {
+        const fig = document.createElement('figure');
+        const c = frameCanvas(f.rows);
+        c.style.width = `${c.width * 6}px`;
+        fig.append(c, Object.assign(document.createElement('figcaption'), { textContent: name }));
+        document.getElementById(where).append(fig);
+      }
+    }
+  </script>
+</body>
+</html>

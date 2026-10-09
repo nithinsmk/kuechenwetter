@@ -4,7 +4,7 @@
 // pointer trails of old Windows, then drift home once the mouse rests.
 
 const SIZE = 60; // css px, matches .floater in radio.css
-const SPOTS = [[-8, -2], [20, 14], [48, -4], [76, 12], [104, -2]]; // % across the link, px above it
+const SPOTS = [[14, -2], [36, 14], [58, -4], [80, 12], [102, -2]]; // % across the link, px above it
 const REST_AFTER = 2500; // ms without moving before they go home
 
 export async function floatTheGallery(link, layer) {

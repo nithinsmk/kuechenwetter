@@ -24,13 +24,8 @@
     <p id="onair">tuning in…</p>
     <p id="weather"></p>
     <p id="listeners" aria-live="polite"></p>
-    <p id="viewbar">
-      <span>follow Salvia</span>
-      <button type="button" data-follow="behind">behind her</button>
-      <button type="button" data-follow="eyes">her eyes</button>
-      <button type="button" id="view-reset" title="back to the normal view" aria-label="back to the normal view">↺</button>
-    </p>
     <p id="status" role="status" hidden></p>
+    <button type="button" id="leave" hidden>leave the kitchen</button>
   </header>
 
   <section id="threshold" aria-labelledby="choose">
@@ -60,13 +55,24 @@
       </div>
       <p id="sent" role="status" hidden></p>
     </form>
+    <!-- the site's links, then which scan is showing -->
+    <div class="links">
+      <a href="gallery.html" id="gallery-link">
+        <span id="floaters" aria-hidden="true"></span>
+        <span>gallery of 3D scans</span>
+      </a>
+      <button type="button" id="about-open">about</button>
+    </div>
     <p id="work" hidden></p>
-    <div class="row">
-      <div class="here">
-        <!-- shake the treats and Salvia comes running (salvia.js, sounds.js) -->
-        <!-- the evil-eye hamsa: plays the figure's scenes in turn, for testing (drawn in radio.js) -->
-        <button type="button" id="talisman" aria-label="the hamsa (Salvia and the figure)" title="the hamsa"></button>
-        <button type="button" id="treats" aria-label="shake the treats (Salvia comes running)" title="shake the treats">
+    <nav id="dates" aria-label="Scans by date"></nav>
+  </footer>
+
+  <!-- bottom right: the toys. The hamsa plays the figure's scenes (radio.js), four taps on
+       the fish bowl flood the kitchen (aquarium.js), the treats call Salvia (salvia.js). -->
+  <div id="toys">
+    <button type="button" id="talisman" aria-label="the hamsa (Salvia and the figure)" title="the hamsa"></button>
+    <button type="button" id="bowl" aria-label="the fish bowl" title="the fish bowl"></button>
+    <button type="button" id="treats" aria-label="shake the treats (Salvia comes running)" title="shake the treats">
           <svg viewBox="0 0 48 58" width="38" height="46" aria-hidden="true">
             <path d="M6 12 L9 5 L12 12 L15 5 L18 12 L21 5 L24 12 L27 5 L30 12 L33 5 L36 12 L39 5 L42 12 L42 51 Q42 55 38 55 L10 55 Q6 55 6 51 Z" fill="#ff8a3d" stroke="#5a2d12" stroke-width="2" stroke-linejoin="round"/>
             <path d="M6 15 H42 V21 H6 Z" fill="#e8662a"/>
@@ -76,24 +82,20 @@
             <g fill="#5a2d12" opacity="0.55"><circle cx="11" cy="49" r="1.6"/><circle cx="9" cy="46" r="0.9"/><circle cx="11.5" cy="45.2" r="0.9"/><circle cx="13.8" cy="46.2" r="0.9"/><circle cx="37" cy="27" r="1.6"/><circle cx="35" cy="24" r="0.9"/><circle cx="37.5" cy="23.2" r="0.9"/><circle cx="39.8" cy="24.2" r="0.9"/></g>
           </svg>
         </button>
-        <nav id="dates" aria-label="Scans by date"></nav>
-      </div>
-      <div class="links">
-        <a href="gallery.html" id="gallery-link">
-          <span id="floaters" aria-hidden="true"></span>
-          <span>gallery of 3D scans</span>
-        </a>
-        <button type="button" id="about-open">about</button>
-        <button type="button" id="leave" hidden>leave the kitchen</button>
-      </div>
-    </div>
-  </footer>
+  </div>
 
   <!-- the duty wheel: small in the corner, big when tapped (wheel.js) -->
   <button type="button" id="wheel-open" class="wheel-corner" aria-haspopup="dialog" aria-label="the duty wheel">
     <svg aria-hidden="true"></svg>
     <span data-wheel="time"></span>
   </button>
+
+    <p id="viewbar" class="under-wheel">
+      <span>follow Salvia</span>
+      <button type="button" data-follow="behind">behind her</button>
+      <button type="button" data-follow="eyes">her eyes</button>
+      <button type="button" id="view-reset" title="back to the normal view" aria-label="back to the normal view">↺</button>
+    </p>
 
   <dialog id="wheel" aria-label="the duty wheel">
     <svg class="wheel-big" role="group"></svg>
