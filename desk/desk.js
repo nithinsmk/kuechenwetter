@@ -138,8 +138,9 @@ function renderStorage() {
   const share = storage.bytes / storage.limitBytes;
   $('storage-fill').style.width = `${Math.min(100, share * 100)}%`;
   $('storage-text').textContent = `${(storage.bytes / 1e6).toFixed(0)} MB of 1 GB · ${storage.files} files`;
-  const average = storage.files ? storage.bytes / storage.files : 6e6;
-  $('egress-text').textContent = `streaming allowance: about ${Math.floor(storage.egressLimitBytes / average)} full plays a month`;
+  // Every song streams at 128 kbps, so the allowance is best read as hours of listening (all listeners together).
+  const hourBytes = (128000 / 8) * 3600;
+  $('egress-text').textContent = `streaming allowance: about ${Math.floor(storage.egressLimitBytes / hourBytes)} hours of listening a month`;
 }
 
 // --- requests ---

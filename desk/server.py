@@ -114,7 +114,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             name = q('filename', 'song.mp3')
             suffix = pathlib.Path(name).suffix.lower()
             if suffix not in keeper.TYPES:
-                raise ValueError(f'{name}: only {", ".join(keeper.TYPES)} files (FLAC: convert to MP3 first)')
+                raise ValueError(f'{name}: only {", ".join(keeper.TYPES)} files')
             weather = q('weather') or None
             if weather and weather not in keeper.WEATHERS:
                 raise ValueError('unknown weather')

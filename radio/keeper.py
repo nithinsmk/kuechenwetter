@@ -13,6 +13,8 @@
 
 Reads the Supabase project and secret key from ~/drainer/.env. Never prints the key.
 New tracks air from the next Berlin midnight; --today backdates one so it airs straight away.
+Every song is uploaded as a 128 kbps MP3 (converted with ffmpeg), to stretch the free
+streaming allowance; the file you give it is left as it is.
 """
 import argparse
 import datetime as dt
@@ -20,6 +22,7 @@ import json
 import pathlib
 import re
 import secrets
+import shutil
 import ssl
 import subprocess
 import sys
@@ -33,7 +36,11 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 BUCKET = 'radio'
 BERLIN = ZoneInfo('Europe/Berlin')
 WEATHERS = ['rain_after_midnight', 'fog_before_dawn', 'clearing_by_noon', 'showers_late_afternoon', 'humid_at_dusk']
-TYPES = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.ogg': 'audio/ogg', '.wav': 'audio/wav'}
+TYPES = ('.mp3', '.m4a', '.aac', '.ogg', '.wav', '.flac', '.aif', '.aiff')  # what you can hand in
+KBPS = 128  # what the radio streams
+# Apps started outside a terminal don't see Homebrew on their PATH.
+FFMPEG = shutil.which('ffmpeg') or next(
+    (p for p in ('/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg') if pathlib.Path(p).exists()), None)
 
 
 def config():
@@ -143,15 +150,45 @@ def cmd_tracks(_):
 def check_audio(path):
     if not path.exists() or path.suffix.lower() not in TYPES:
         sys.exit(f'{path.name}: need an existing {"/".join(TYPES)} file')
-    if path.stat().st_size > 50 * 1024 * 1024:
-        sys.exit(f'{path.name} is over the 50 MB limit; split or re-encode it first')
+    if not FFMPEG:
+        sys.exit('ffmpeg is missing; install it with: brew install ffmpeg')
+
+
+def bitrate_of(path):
+    out = subprocess.run(['afinfo', str(path)], capture_output=True, text=True).stdout
+    match = re.search(r'bit rate:\s*(\d+)', out)
+    return int(match.group(1)) if match else None
+
+
+def radio_mp3(path, folder):
+    """The song as the radio streams it: a 128 kbps MP3 without cover art or tags.
+    An MP3 already at 128 kbps or below is only stripped, not encoded again."""
+    out = pathlib.Path(folder) / 'radio.mp3'
+    rate = bitrate_of(path) if path.suffix.lower() == '.mp3' else None
+    codec = ['-c:a', 'copy'] if rate and rate <= KBPS * 1000 else ['-c:a', 'libmp3lame', '-b:a', f'{KBPS}k']
+    done = subprocess.run([FFMPEG, '-hide_banner', '-loglevel', 'error', '-y', '-i', str(path),
+                           '-map', '0:a:0', '-map_metadata', '-1', *codec, str(out)],
+                          capture_output=True, text=True)
+    if done.returncode:
+        sys.exit(f"couldn't convert {path.name}: {done.stderr.strip()[:300]}")
+    if out.stat().st_size > 50 * 1024 * 1024:
+        sys.exit(f'{path.name} is over 50 MB even at {KBPS} kbps (about 55 minutes); split it first')
+    return out
+
+
+def store_audio(path, artist, title, part):
+    """Convert and upload a song; returns its file name in the bucket and its length."""
+    with tempfile.TemporaryDirectory() as tmp:
+        audio = radio_mp3(path, tmp)
+        seconds = seconds_of(audio)
+        name = f'{slug(artist)}-{slug(title)}-{part}-{secrets.token_hex(3)}.mp3'
+        call('POST', f'/storage/v1/object/{BUCKET}/{urllib.parse.quote(name)}', audio.read_bytes(),
+             {'Content-Type': 'audio/mpeg', 'x-upsert': 'false'})
+    return name, seconds
 
 
 def upload_track(path, artist, title, part, today, weather=None):
-    seconds = seconds_of(path)
-    name = f'{slug(artist)}-{slug(title)}-{part}-{secrets.token_hex(3)}{path.suffix.lower()}'
-    call('POST', f'/storage/v1/object/{BUCKET}/{urllib.parse.quote(name)}', path.read_bytes(),
-         {'Content-Type': TYPES[path.suffix.lower()], 'x-upsert': 'false'})
+    name, seconds = store_audio(path, artist, title, part)
     row = {'artist': artist, 'title': title, 'part': part, 'file': name, 'seconds': seconds}
     if weather:
         row['weather'] = weather

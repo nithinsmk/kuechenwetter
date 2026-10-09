@@ -30,6 +30,8 @@ python3 radio/keeper.py done <request id>
 python3 radio/keeper.py tracks
 ```
 
+Every song goes up as a 128 kbps MP3, converted by `keeper.py` with ffmpeg (`brew install ffmpeg`), so MP3, FLAC, WAV, M4A, OGG and AIFF can all be handed in. At 128 kbps the free plan's 5 GB of streaming is about 90 hours of listening a month, all listeners together.
+
 ## Scans for the radio
 
 `scans/series.json` lists the scans the radio shows, with where to point the camera. Each is a
