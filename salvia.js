@@ -98,7 +98,7 @@ function furSplats(shapes, { colorOf } = {}) {
             scales.set(size, size, size * 0.6);
             quaternion.identity();
           } else { // a strand: long one way, thin the other, lying along the surface and drooping a little
-            scales.set(size * (1.6 + Math.random() * 1.2), size * 0.45, size * 0.45);
+            scales.set(size * (0.9 + Math.random() * 0.7), size * 0.4, size * 0.4);
             const along = new THREE.Vector3().crossVectors(d, new THREE.Vector3(0, 1, 0)).normalize().lerp(new THREE.Vector3(0, -1, 0), 0.35).normalize();
             quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), along.lengthSq() ? along : d);
           }
@@ -220,7 +220,7 @@ function pixelTexture(rows) {
 function buildPixel() {
   const r = rig();
   const textures = Object.fromEntries(Object.entries(PIXELS).map(([k, rows]) => [k, pixelTexture(rows)]));
-  const material = new THREE.SpriteMaterial({ map: textures.stand, transparent: true });
+  const material = new THREE.SpriteMaterial({ map: textures.stand, transparent: true, alphaTest: 0.5 }); // clear pixels mustn't hide the scan
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(1.6, 1.28, 1);
   sprite.position.y = 0.64;
