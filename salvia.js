@@ -8,6 +8,7 @@
 // walks on the counter, or on whatever surface the scan has.
 import * as THREE from 'three';
 import { SplatMesh } from '@sparkjsdev/spark';
+import { plantGarden } from './plants.js';
 
 const FORMS = ['splat', 'pixel', 'cartoon'];
 const CAT_HEIGHT = 1.05; // in cat units, ears included
@@ -246,6 +247,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
   async function measure(object, focus, plant, tries = 0) {
     const id = ++measuring;
     quiet();
+    uproot();
     ground = null;
     holder.visible = false;
     // Rays only hit a scan once it has been drawn, so wait for drawn frames (which also
@@ -295,6 +297,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
       ? cells.reduce((best, cell) => (Math.hypot(cell[0] - plant[0], cell[1] - plant[2]) < Math.hypot(best[0] - plant[0], best[1] - plant[2]) ? cell : best))
       : null;
     ground = { floor, size, holderAt, cells, plant, plantCell, grid, step, c };
+    plantFor(`kitchen ${c.x.toFixed(2)} ${c.z.toFixed(2)}`);
     holder.scale.setScalar(size / CAT_HEIGHT);
     plan('away', 3000 + Math.random() * 4000);
   }
@@ -322,6 +325,20 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
   let state = { name: 'away', until: 0 };
   let purring = false;
   const quiet = () => { if (purring) { purring = false; onPurring?.(false); } };
+
+  // Her little 8-bit plants (plants.js), planted wherever she's walking.
+  let garden = null;
+  function uproot() {
+    if (!garden) return;
+    scene.remove(garden.group);
+    garden.group.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
+    garden = null;
+  }
+  function plantFor(key) {
+    uproot();
+    garden = plantGarden(ground, key, camera);
+    scene.add(garden.group);
+  }
   let target = null;
   let then = null;
   let speed = 0;
@@ -351,15 +368,28 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
 
   function nextActivity() {
     const options = ['wander', 'wander', 'sniff', 'sniff', 'checkin', 'sleep', 'runaway'];
-    if (ground.plantCell) options.push('plant', 'plant');
+    if (ground.plantCell || garden?.plants.length) options.push('plant', 'plant', 'plant');
     switch (pick(options)) {
       case 'wander': return walkTo(pick(ground.cells), false, nextActivity);
       case 'sniff': return walkTo(pick(ground.cells), false, () => { say('*sniff sniff*'); plan('sniff', 2500 + Math.random() * 2000); });
       case 'checkin': return walkTo(nearHolder(), false, () => { say(pick(['mrrp', 'mrrp?', '*checks in*'])); plan('sit', 4000 + Math.random() * 3000); });
-      case 'plant': return walkTo(ground.plantCell, false, () => { say(ground.plantWords ?? '*nom nom* (your plant)'); plan('eat', 5000 + Math.random() * 3000); });
+      case 'plant':
+        if (garden?.plants.length && (!ground.plantCell || Math.random() < 0.75)) return eatPlant(pick(garden.plants), false);
+        return walkTo(ground.plantCell, false, () => { say(ground.plantWords ?? '*nom nom* (your plant)'); plan('eat', 5000 + Math.random() * 3000); });
       case 'sleep': return walkTo(pick(ground.cells), false, () => plan('sleep', 20000 + Math.random() * 25000));
       default: return walkTo(edgeCell(), true, () => { say('!'); plan('away', 40000 + Math.random() * 80000); });
     }
+  }
+
+  // Go to a plant and eat it, bite by bite.
+  function eatPlant(plant, fast) {
+    const near = ground.cells
+      .map((cell) => ({ cell, d: Math.hypot(cell[0] - plant.x, cell[1] - plant.z) }))
+      .filter(({ d }) => d < ground.size * 3);
+    const spot = near.length
+      ? near.reduce((a, b) => (Math.abs(b.d - ground.size * 1.1) < Math.abs(a.d - ground.size * 1.1) ? b : a)).cell
+      : [plant.x, plant.z, plant.y];
+    walkTo(spot, fast, () => { say(plant.words); plan('eat', 6000 + Math.random() * 3000, { plant, bite: 0 }); });
   }
 
   function arrive() {
@@ -453,6 +483,19 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
       nextActivity();
     }
 
+    if (state.name === 'eat' && state.plant) {
+      const { plant } = state;
+      let turn = Math.atan2(plant.x - holder.position.x, plant.z - holder.position.z) - holder.rotation.y;
+      turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+      holder.rotation.y += turn * Math.min(1, dt * 5);
+      if (now - state.bite > 1100) {
+        state.bite = now;
+        plant.chomp();
+        if (now > bubbleUntil) say(pick(['*chomp*', '*crunch*', '*munch*', '*chomp chomp*']), 900);
+        if (!plant.left) { say('*all gone*'); state.until = now; }
+      }
+    }
+    for (const plant of garden?.plants ?? []) plant.regrow(now);
     if (state.name === 'sleep' && Math.floor(t) % 4 === 0 && now > bubbleUntil) say('z z z', 1500);
     if (state.name === 'friendly' && now > bubbleUntil) say(pick(['♥', 'prrrr ♥', '♥ ♥', '*headbutt*', '*slow blink*', 'prrrrrrr', '*rubs on you*']), 1700);
     // Purr the whole time she's being friendly.
@@ -477,12 +520,28 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
   let lastPet = 0;
   canvas.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
   canvas.addEventListener('pointerup', (e) => {
-    if (!down || !holder.visible || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
+    if (!down || !ground || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
     const rect = canvas.getBoundingClientRect();
     there.copy(holder.position).add(new THREE.Vector3(0, ground.size * 0.5, 0)).project(camera);
     const sx = rect.left + ((there.x + 1) / 2) * rect.width;
     const sy = rect.top + ((1 - there.y) / 2) * rect.height;
-    if (Math.hypot(e.clientX - sx, e.clientY - sy) > 28) return;
+    if (!holder.visible || Math.hypot(e.clientX - sx, e.clientY - sy) > 28) {
+      // Not her: a plant? Then she comes running to eat that one.
+      if (!garden) return;
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
+      const hit = ray.intersectObjects(garden.plants.map((p) => p.mesh), false)[0];
+      const plant = hit && garden.plants.find((p) => p.mesh === hit.object);
+      if (!plant) return;
+      if (state.name === 'away' || !holder.visible) {
+        const start = edgeCell();
+        holder.position.set(start[0], heightAt(start[0], start[1]), start[1]);
+        holder.visible = true;
+      }
+      say(pick(['MRRP!', '!!', '*eyes the plant*']), 1200);
+      eatPlant(plant, true);
+      return;
+    }
     // Each pet turns her into her next form; ten in a row (no pause over two seconds)
     // and she purrs the kitchen away.
     const now = performance.now();
@@ -501,13 +560,14 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
 
   return {
     enter: (object, focus, plant) => measure(object, focus, plant).catch((error) => console.warn('salvia:', error)),
-    leave: () => { measuring++; ground = null; holder.visible = false; bubble.hidden = true; quiet(); },
+    leave: () => { measuring++; ground = null; holder.visible = false; bubble.hidden = true; quiet(); uproot(); },
     // A scene that knows its own ground: { heightAt, cells: [[x, z, y]], size, holderAt, plantCell? }.
     walkOn: (spec) => {
       measuring++;
       quiet();
       ground = { ...spec, size: spec.size * ON_THE_HILL };
       holder.scale.setScalar(ground.size / CAT_HEIGHT);
+      plantFor('hill');
       plan('away', 1500 + Math.random() * 2500);
     },
     update,
@@ -543,6 +603,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
       return true;
     },
     get state() { return state.name; },
+    get plants() { return garden?.plants ?? []; },
+    eat: (index) => garden?.plants[index] && eatPlant(garden.plants[index], true),
     get ground() { return ground && { floor: ground.floor, size: ground.size, holderAt: ground.holderAt, cells: ground.cells.length, plantCell: ground.plantCell }; },
     get where() { return holder.visible ? holder.position.toArray() : null; },
     get heading() { return holder.rotation.y; },
