@@ -43,6 +43,8 @@ const FACE = [ // eyes, pupils, nose
   { c: [0.085, 0.15, 0.302], r: [0.01, 0.026, 0.006], n: 8, color: PUPIL, size: 0.01 },
   { c: [-0.085, 0.15, 0.302], r: [0.01, 0.026, 0.008], n: 8, color: PUPIL, size: 0.01 },
   { c: [0, 0.08, 0.3], r: [0.022, 0.015, 0.01], n: 10, color: NOSE, size: 0.012 },
+  { c: [0.105, 0.17, 0.31], r: [0.004, 0.004, 0.002], n: 3, color: new THREE.Color('#ffffff'), size: 0.009 },
+  { c: [-0.065, 0.17, 0.31], r: [0.004, 0.004, 0.002], n: 3, color: new THREE.Color('#ffffff'), size: 0.009 },
 ];
 const TAIL = [ // around the tail pivot, a bushy plume going back and up
   { c: [0, 0.02, -0.08], r: [0.09, 0.09, 0.12], n: 220 },
@@ -91,8 +93,14 @@ function furSplats(shapes, { colorOf } = {}) {
           center.set(s.c[0] + s.r[0] * d.x * depth, s.c[1] + s.r[1] * d.y * depth, s.c[2] + s.r[2] * d.z * depth);
           if (s.tilt) center.applyAxisAngle(new THREE.Vector3(0, 0, 1), s.tilt * (center.y - s.c[1]));
           const size = s.size ?? 0.034;
-          scales.set(size * (0.7 + Math.random() * 0.6), size * (0.7 + Math.random() * 0.6), size * (0.7 + Math.random() * 0.6));
-          quaternion.random();
+          if (s.color) {
+            scales.set(size, size, size * 0.6);
+            quaternion.identity();
+          } else { // a strand: long one way, thin the other, lying along the surface and drooping a little
+            scales.set(size * (1.6 + Math.random() * 1.2), size * 0.45, size * 0.45);
+            const along = new THREE.Vector3().crossVectors(d, new THREE.Vector3(0, 1, 0)).normalize().lerp(new THREE.Vector3(0, -1, 0), 0.35).normalize();
+            quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), along.lengthSq() ? along : d);
+          }
           if (s.color) color.copy(s.color);
           else if (colorOf) color.copy(colorOf(s, d));
           else color.copy(WHITE).lerp(SHADE, Math.max(0, -d.y) * 0.8 + Math.random() * 0.12);
@@ -108,8 +116,8 @@ function buildSplat() {
   r.body.add(furSplats(BODY));
   r.head.add(furSplats(HEAD));
   r.head.add(furSplats(EARS, { colorOf: (s, d) => (d.z > 0.2 ? EAR : WHITE) }));
-  r.eyes.add(furSplats(FACE.slice(0, 4)));
-  r.head.add(furSplats(FACE.slice(4)));
+  r.eyes.add(furSplats([...FACE.slice(0, 4), ...FACE.slice(5)]));
+  r.head.add(furSplats([FACE[4]]));
   r.tail.add(furSplats(TAIL));
   for (const leg of r.legs) leg.add(furSplats(LEG));
   return r;
@@ -433,7 +441,9 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
     head.rotation.x = rearing ? 0.2 + Math.sin(t * 8) * 0.08 : state.name === 'eat' ? 0.55 + Math.sin(t * 8) * 0.08
       : state.name === 'sniff' ? 0.4 + Math.sin(t * 14) * 0.06
         : state.name === 'sleep' ? 0.35 : sitting ? 0.28 : 0;
-    head.rotation.z = state.name === 'friendly' ? Math.sin(t * 1.4) * 0.18 : 0; // the head tilt
+    head.rotation.z = state.name === 'friendly' ? Math.sin(t * 1.4) * 0.18 : walking ? swing * 0.08 : 0; // the head tilt
+    if (walking) head.rotation.x += Math.abs(swing) * 0.12; // a nod with each step
+    if (!rearing && !sitting) body.rotation.z = walking ? -swing * 0.06 : body.rotation.z; // the hips roll
     // Sitting, she looks round at whoever's watching.
     head.rotation.y = sitting
       ? THREE.MathUtils.clamp(Math.atan2(camera.position.x - holder.position.x, camera.position.z - holder.position.z) - holder.rotation.y, -0.9, 0.9)
