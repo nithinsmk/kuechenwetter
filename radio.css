@@ -443,3 +443,9 @@ body.clean #salvia-says { display: none !important; }
   from { opacity: 1; transform: translate(var(--dx), 4px) rotate(0deg); }
   to { opacity: 0; transform: translate(var(--dx), -38px) rotate(var(--turn)); }
 }
+
+/* the crystal ball above the treats: faint until hovered */
+.here { position: relative; }
+#crystal { position: absolute; left: 8px; bottom: calc(100% + 4px); padding: 0; pointer-events: auto; opacity: 0.35; }
+#crystal:hover, #crystal:focus-visible { opacity: 1; }
+#crystal svg { display: block; filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.3)); }

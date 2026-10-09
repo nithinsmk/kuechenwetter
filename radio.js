@@ -55,6 +55,19 @@ const salvia = makeSalvia({
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopPurr(); });
 
+// The crystal ball: each tap plays the next of the figure's scenes (for trying them out).
+let crystalTurn = 0;
+$('crystal').addEventListener('click', () => {
+  const scenes = [
+    () => { salvia.investigate(); return 'she goes to look'; },
+    () => { salvia.spook(); return 'the spook'; },
+    () => { salvia.ghostnap(); return 'a nap by the figure, and a visitor'; },
+  ];
+  const text = scenes[crystalTurn++ % scenes.length]();
+  show($('notice'), text);
+  setTimeout(() => show($('notice'), ''), 3000);
+});
+
 // The treat packet: shake it (crinkle, crinkle) and Salvia comes running.
 $('treats').addEventListener('click', () => {
   crinkle();

@@ -791,6 +791,12 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     get form() { return FORMS[formIndex]; },
     becomeForm,
     summon: () => { if (ground) { plan('away', 0); } },
+    investigate: () => {
+      if (!ground?.ghostCell) return;
+      if (!holder.visible) arrive();
+      say(pick(['…?', 'mrr?', '*ears forward*']), 1200);
+      walkTo(ghostSpot() ?? ground.ghostCell, false, () => { say(pick(['*sniff*', '*stares at it*', 'hm.']), 2000); plan('sniff', 2500, { figure: true }); });
+    },
     spook: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); }); } },
     ghostnap: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { plan('sleep', 40000, { reaper: true }); setTimeout(summonReaper, 1500); }); } },
   };
