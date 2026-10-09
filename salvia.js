@@ -8,7 +8,7 @@
 // walks on the counter, or on whatever surface the scan has.
 import * as THREE from 'three';
 import { SplatMesh } from '@sparkjsdev/spark';
-import { plantGarden } from './plants.js';
+import { plantGarden, shadowBlob } from './plants.js';
 
 const FORMS = ['splat', 'pixel', 'cartoon'];
 const CAT_HEIGHT = 1.05; // in cat units, ears included
@@ -217,6 +217,9 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
   const holder = new THREE.Group(); // her place in the world: ground position and heading
   holder.visible = false;
   scene.add(holder);
+  const shadow = shadowBlob(0.42);
+  shadow.position.y = 0.012;
+  holder.add(shadow);
   let formIndex = 0;
   let cat = null;
 
@@ -386,10 +389,13 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
     const near = ground.cells
       .map((cell) => ({ cell, d: Math.hypot(cell[0] - plant.x, cell[1] - plant.z) }))
       .filter(({ d }) => d < ground.size * 3);
+    // Leaves higher than her head: she stands on her hind legs to reach, a little closer in.
+    const rear = plant.y + plant.height * 0.6 > plant.y + ground.size * 0.8;
+    const want = ground.size * (rear ? 0.85 : 1.1);
     const spot = near.length
-      ? near.reduce((a, b) => (Math.abs(b.d - ground.size * 1.1) < Math.abs(a.d - ground.size * 1.1) ? b : a)).cell
+      ? near.reduce((a, b) => (Math.abs(b.d - want) < Math.abs(a.d - want) ? b : a)).cell
       : [plant.x, plant.z, plant.y];
-    walkTo(spot, fast, () => { say(plant.words); plan('eat', 6000 + Math.random() * 3000, { plant, bite: 0 }); });
+    walkTo(spot, fast, () => { say(plant.words); plan('eat', 6000 + Math.random() * 3000, { plant, bite: 0, rear }); });
   }
 
   function arrive() {
@@ -404,6 +410,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
 
   const facing = new THREE.Vector3();
   const there = new THREE.Vector3();
+  let nextBlink = 3;
+  let blinkUntil = 0;
 
   function pose(t, dt) {
     const { body, head, eyes, tail, legs } = cat;
@@ -413,12 +421,16 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
       leg.rotation.x = state.name === 'sleep' ? -1.4 : (i === 0 || i === 3 ? swing : -swing);
       leg.visible = state.name !== 'sleep' || cat.sprite;
     });
-    body.position.y = state.name === 'sleep' ? -0.3 : walking ? Math.abs(swing) * 0.02 : 0;
+    const rearing = state.name === 'eat' && state.rear;
+    body.position.y = state.name === 'sleep' ? -0.3 : walking ? Math.abs(swing) * (state.name === 'run' ? 0.07 : 0.025) : rearing ? 0.22 : 0;
+    // Breathing: a slow swell of the chest, deeper asleep.
+    body.scale.y = 1 + Math.sin(t * (state.name === 'sleep' ? 1.1 : 1.8)) * (state.name === 'sleep' ? 0.03 : walking ? 0 : 0.014);
     const sitting = state.name === 'sit' || state.name === 'friendly';
-    body.rotation.x = sitting ? -0.28 : 0;
+    body.rotation.x = rearing ? -0.95 : sitting ? -0.28 : 0;
+    if (rearing) { legs[0].rotation.x = legs[1].rotation.x = -1.1 + Math.sin(t * 8) * 0.08; legs[2].rotation.x = legs[3].rotation.x = 0.85; }
     body.rotation.z = state.name === 'friendly' ? Math.sin(t * 2.2) * 0.12 : 0; // rubbing against your leg
     if (sitting) { legs[2].rotation.x = legs[3].rotation.x = -1.2; }
-    head.rotation.x = state.name === 'eat' ? 0.55 + Math.sin(t * 8) * 0.08
+    head.rotation.x = rearing ? 0.2 + Math.sin(t * 8) * 0.08 : state.name === 'eat' ? 0.55 + Math.sin(t * 8) * 0.08
       : state.name === 'sniff' ? 0.4 + Math.sin(t * 14) * 0.06
         : state.name === 'sleep' ? 0.35 : sitting ? 0.28 : 0;
     head.rotation.z = state.name === 'friendly' ? Math.sin(t * 1.4) * 0.18 : 0; // the head tilt
@@ -427,6 +439,9 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
       ? THREE.MathUtils.clamp(Math.atan2(camera.position.x - holder.position.x, camera.position.z - holder.position.z) - holder.rotation.y, -0.9, 0.9)
       : state.name === 'sleep' ? 0.6 : 0;
     eyes.visible = state.name !== 'sleep';
+    // A blink now and then.
+    if (t > nextBlink) { blinkUntil = t + 0.13; nextBlink = t + 2.5 + Math.random() * 5; }
+    eyes.scale.y = t < blinkUntil ? 0.08 : 1;
     tail.rotation.y = state.name === 'sleep' ? 1.7 : Math.sin(t * (walking ? 3 : 1.2)) * 0.35;
     tail.rotation.x = state.name === 'sleep' ? 0.9 : state.name === 'run' ? 0.5 : state.name === 'friendly' ? -0.35 + Math.sin(t * 9) * 0.04 : 0;
 
@@ -480,6 +495,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
     } else if (now > state.until) {
       if (state.name === 'sleep') say('*stretches*');
       if (state.name === 'friendly') say('*wanders off, satisfied*');
+      if (state.name === 'eat') say(pick(['*licks paw*', '*burp*', '*washes face*', '*satisfied*']));
       nextActivity();
     }
 
@@ -495,7 +511,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
         if (!plant.left) { say('*all gone*'); state.until = now; }
       }
     }
-    for (const plant of garden?.plants ?? []) plant.regrow(now);
+    for (const plant of garden?.plants ?? []) plant.update(now);
     if (state.name === 'sleep' && Math.floor(t) % 4 === 0 && now > bubbleUntil) say('z z z', 1500);
     if (state.name === 'friendly' && now > bubbleUntil) say(pick(['♥', 'prrrr ♥', '♥ ♥', '*headbutt*', '*slow blink*', 'prrrrrrr', '*rubs on you*']), 1700);
     // Purr the whole time she's being friendly.
@@ -518,21 +534,46 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
   let down = null;
   let pets = 0;
   let lastPet = 0;
+  // Is the pointer on her, or on a plant? (Her tap target grows with her on-screen size.)
+  const ray = new THREE.Raycaster();
+  function under(e) {
+    if (!ground) return {};
+    const rect = canvas.getBoundingClientRect();
+    if (holder.visible) {
+      there.copy(holder.position).add(new THREE.Vector3(0, ground.size * 0.5, 0)).project(camera);
+      const sx = rect.left + ((there.x + 1) / 2) * rect.width;
+      const sy = rect.top + ((1 - there.y) / 2) * rect.height;
+      facing.copy(holder.position).add(new THREE.Vector3(0, ground.size, 0)).project(camera);
+      const tall = Math.abs(((1 - facing.y) / 2) * rect.height - sy) * 2;
+      if (there.z < 1 && Math.hypot(e.clientX - sx, e.clientY - sy) < Math.max(26, tall * 0.65)) return { her: true };
+    }
+    if (!garden) return {};
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
+    const hit = ray.intersectObjects(garden.plants.map((p) => p.mesh), false)[0];
+    return { plant: hit && garden.plants.find((p) => p.mesh === hit.object) };
+  }
+  let hoverAt = 0;
+  canvas.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse' || e.timeStamp - hoverAt < 80) return;
+    hoverAt = e.timeStamp;
+    const { her, plant } = under(e);
+    canvas.style.cursor = her || plant ? 'pointer' : '';
+  });
+
   canvas.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
   canvas.addEventListener('pointerup', (e) => {
     if (!down || !ground || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
-    const rect = canvas.getBoundingClientRect();
-    there.copy(holder.position).add(new THREE.Vector3(0, ground.size * 0.5, 0)).project(camera);
-    const sx = rect.left + ((there.x + 1) / 2) * rect.width;
-    const sy = rect.top + ((1 - there.y) / 2) * rect.height;
-    if (!holder.visible || Math.hypot(e.clientX - sx, e.clientY - sy) > 28) {
+    const { her, plant } = under(e);
+    if (!her) {
       // Not her: a plant? Then she comes running to eat that one.
-      if (!garden) return;
-      const ray = new THREE.Raycaster();
-      ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
-      const hit = ray.intersectObjects(garden.plants.map((p) => p.mesh), false)[0];
-      const plant = hit && garden.plants.find((p) => p.mesh === hit.object);
       if (!plant) return;
+      plant.wobble();
+      if (state.name === 'eat' && state.plant === plant) { // already at it: another bite
+        plant.chomp();
+        say(pick(['*chomp*', '*nom*', '*crunch*']), 900);
+        state.until = Math.max(state.until, performance.now() + 4000);
+        return;
+      }
       if (state.name === 'away' || !holder.visible) {
         const start = edgeCell();
         holder.position.set(start[0], heightAt(start[0], start[1]), start[1]);

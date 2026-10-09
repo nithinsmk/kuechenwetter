@@ -154,6 +154,28 @@ function seeded(text) {
 
 const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
 
+// A soft dark blob on the ground, so things sit in the scan rather than float on it.
+let shadowTexture = null;
+export function shadowBlob(radius) {
+  if (!shadowTexture) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
+    g.addColorStop(0, 'rgba(0,0,0,0.55)');
+    g.addColorStop(0.6, 'rgba(0,0,0,0.22)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    shadowTexture = new THREE.CanvasTexture(canvas);
+  }
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2, radius * 2),
+    new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false }));
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.renderOrder = 1;
+  return mesh;
+}
+
 function grow(kind, rng, size) {
   const voxels = kind.build(rng);
   const top = Math.max(...voxels.map((v) => v.y)) + 1;
@@ -197,10 +219,16 @@ export function plantGarden(ground, key, camera) {
     const [x, z, y] = free[Math.floor(rng() * free.length)];
     const { mesh, matrices, leaves, unit, top } = grow(kind, rng, size);
     mesh.position.set(x, y, z);
-    mesh.rotation.y = rng() * Math.PI * 2;
+    const yaw = rng() * Math.PI * 2;
+    mesh.rotation.y = yaw;
     group.add(mesh);
+    const shadow = shadowBlob(unit * 3.2);
+    shadow.position.set(x, y + unit * 0.05, z);
+    group.add(shadow);
     const eaten = new Set();
     let lastBite = 0;
+    let lastRegrow = 0;
+    let wobbleAt = -1e9;
     plants.push({
       name: kind.name,
       words: kind.words,
@@ -208,9 +236,12 @@ export function plantGarden(ground, key, camera) {
       x, z, y,
       height: unit * top,
       get left() { return leaves.length - eaten.size; },
+      // A nudge: the whole plant sways on its pot for a moment.
+      wobble() { wobbleAt = performance.now(); },
       // A bite takes a few leaves.
       chomp() {
         lastBite = performance.now();
+        wobbleAt = lastBite;
         const uneaten = leaves.filter((n) => !eaten.has(n));
         for (let k = 0; k < Math.min(uneaten.length, 3 + Math.floor(rng() * 4)); k++) {
           const n = uneaten.splice(Math.floor(rng() * uneaten.length), 1)[0];
@@ -219,11 +250,16 @@ export function plantGarden(ground, key, camera) {
         }
         mesh.instanceMatrix.needsUpdate = true;
       },
-      // Leaves come back a while after the last bite.
-      regrow(now) {
-        if (!eaten.size || now - lastBite < 90000) return;
-        for (const n of eaten) mesh.setMatrixAt(n, matrices[n]);
-        eaten.clear();
+      // Leaves come back one by one, a while after the last bite; and the sway dies down.
+      update(now) {
+        const since = (now - wobbleAt) / 1000;
+        const sway = since < 1.2 ? Math.sin(since * 22) * 0.09 * Math.exp(-since * 3.5) : 0;
+        mesh.rotation.set(sway * 0.6, yaw, sway);
+        if (!eaten.size || now - lastBite < 60000 || now - lastRegrow < 700) return;
+        lastRegrow = now;
+        const n = eaten.values().next().value;
+        eaten.delete(n);
+        mesh.setMatrixAt(n, matrices[n]);
         mesh.instanceMatrix.needsUpdate = true;
       },
     });
