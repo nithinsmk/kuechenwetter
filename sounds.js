@@ -110,12 +110,12 @@ export function hiss() {
   source.buffer = noise;
   const band = ac.createBiquadFilter();
   band.type = 'bandpass';
-  band.frequency.value = 5200;
-  band.Q.value = 0.9;
+  band.frequency.value = 3600;
+  band.Q.value = 0.7;
   const env = ac.createGain();
   env.gain.setValueAtTime(0.0001, now);
-  env.gain.exponentialRampToValueAtTime(0.5, now + 0.08);
-  env.gain.setValueAtTime(0.5, now + 0.45);
+  env.gain.exponentialRampToValueAtTime(0.13, now + 0.08);
+  env.gain.setValueAtTime(0.13, now + 0.45);
   env.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
   source.connect(band).connect(env).connect(ac.destination);
   source.start(now, Math.random(), 0.75);

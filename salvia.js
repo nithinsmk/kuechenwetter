@@ -385,10 +385,11 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
   function nextActivity() {
     const options = ['wander', 'wander', 'sniff', 'sniff', 'checkin', 'sleep', 'runaway'];
     if (ground.plantCell || garden?.plants.length) options.push('plant', 'plant', 'plant');
-    if (ground.ghostCell && ground.ghost) options.push('spook', 'ghostnap');
+    const atFigure = ghostSpot();
+    if (atFigure) options.push('spook', 'ghostnap');
     switch (pick(options)) {
-      case 'spook': return walkTo(ground.ghostCell, false, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); });
-      case 'ghostnap': return walkTo(ground.ghostCell, false, () => {
+      case 'spook': return walkTo(atFigure, false, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); });
+      case 'ghostnap': return walkTo(atFigure, false, () => {
         say('*curls up by it*');
         plan('sleep', 30000 + Math.random() * 20000, { reaper: true });
         setTimeout(() => { if (state.reaper && state.name === 'sleep') summonReaper(); }, 6000);
@@ -480,6 +481,22 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       g.position.y = heightAt(g.position.x, g.position.z) - h * k;
       if (k >= 1) { scene.remove(g); g.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); }); reaper = null; }
     }
+  }
+
+  // Where she goes to meet the figure: the walkable cell nearest it that's also on screen
+  // right now (the figure only shows from some angles), or nothing if it's out of view.
+  function ghostSpot() {
+    if (!ground?.ghost) return null;
+    const ndc = new THREE.Vector3();
+    ndc.set(ground.ghost[0], ground.ghost[1] + ground.size, ground.ghost[2]).project(camera);
+    if (ndc.z > 1 || Math.abs(ndc.x) > 0.95 || Math.abs(ndc.y) > 0.95) return null;
+    const seen = ground.cells.filter((c) => {
+      ndc.set(c[0], c[2] + ground.size * 0.5, c[1]).project(camera);
+      return ndc.z < 1 && Math.abs(ndc.x) < 0.8 && Math.abs(ndc.y) < 0.85;
+    });
+    if (!seen.length) return null;
+    const [gx, gz] = [ground.ghost[0], ground.ghost[2]];
+    return seen.reduce((a, b) => (Math.hypot(b[0] - gx, b[1] - gz) < Math.hypot(a[0] - gx, a[1] - gz) ? b : a));
   }
 
   function arrive() {
@@ -587,6 +604,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       if (state.name === 'sleep') say('*stretches*');
       if (state.name === 'friendly') say('*wanders off, satisfied*');
       if (state.name === 'eat') say(pick(['*licks paw*', '*burp*', '*washes face*', '*satisfied*']));
+      if (state.name === 'sniff' && state.figure) { say('*keeps an eye on it*', 2000); plan('sit', 5000); return; }
       nextActivity();
     }
 
@@ -655,6 +673,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       const tall = Math.abs(((1 - facing.y) / 2) * rect.height - sy) * 2;
       if (there.z < 1 && Math.hypot(e.clientX - sx, e.clientY - sy) < Math.max(26, tall * 0.65)) return { her: true };
     }
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
+    if (ground.ghost && ray.ray.intersectsSphere(new THREE.Sphere(new THREE.Vector3(ground.ghost[0], ground.ghost[1] + ground.size * 1.6, ground.ghost[2]), ground.size * 2.6))) return { figure: true };
     if (!garden) return {};
     ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1), camera);
     const hit = ray.intersectObjects(garden.plants.map((p) => p.mesh), false)[0];
@@ -664,14 +684,25 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
   canvas.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse' || e.timeStamp - hoverAt < 80) return;
     hoverAt = e.timeStamp;
-    const { her, plant } = under(e);
-    canvas.style.cursor = her || plant ? 'pointer' : '';
+    const { her, plant, figure } = under(e);
+    canvas.style.cursor = her || plant || figure ? 'pointer' : '';
   });
 
   canvas.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
   canvas.addEventListener('pointerup', (e) => {
     if (!down || !ground || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
-    const { her, plant } = under(e);
+    const { her, plant, figure } = under(e);
+    if (figure && !her) {
+      // The figure: she comes over to investigate. Usually a sniff and a long look;
+      // one time in three it gets to her.
+      if (!holder.visible) arrive();
+      say(pick(['…?', 'mrr?', '*ears forward*']), 1200);
+      walkTo(ghostSpot() ?? ground.ghostCell, false, () => {
+        if (Math.random() < 0.34) { say('…?', 1500); plan('spook', 7000, { phase: 0 }); }
+        else { say(pick(['*sniff*', '*stares at it*', 'hm.']), 2000); plan('sniff', 2500, { figure: true }); }
+      });
+      return;
+    }
     if (!her) {
       // Not her: a plant? Then she comes running to eat that one.
       if (!plant) return;
@@ -760,7 +791,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     get form() { return FORMS[formIndex]; },
     becomeForm,
     summon: () => { if (ground) { plan('away', 0); } },
-    spook: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ground.ghostCell, true, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); }); } },
-    ghostnap: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ground.ghostCell, true, () => { plan('sleep', 40000, { reaper: true }); setTimeout(summonReaper, 1500); }); } },
+    spook: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); }); } },
+    ghostnap: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { plan('sleep', 40000, { reaper: true }); setTimeout(summonReaper, 1500); }); } },
   };
 }
