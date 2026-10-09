@@ -7,6 +7,7 @@ import { mountWheel } from './wheel.js';
 import { floatTheGallery } from './floaters.js';
 import { makeSalvia } from './salvia.js';
 import { buildHill } from './hill.js';
+import { HAMSA, HAMSA_INK } from './hamsa.js';
 import { crinkle, startPurr, stopPurr, hiss } from './sounds.js';
 
 const WEATHERS = ['fog_before_dawn', 'clearing_by_noon', 'showers_late_afternoon', 'humid_at_dusk', 'rain_after_midnight'];
@@ -73,16 +74,6 @@ const flyFrame = (time) => {
   if (k === 1) { const { after } = flight; flight = null; after?.(); }
 };
 let hamsaTurn = 0;
-// The hamsa, in pixels (16 × 20): silver edging, deep and light blue, the eye in the palm,
-// blue beads hanging from the fingers.
-const HAMSA = [
-  '....ssssssss....', '..ssbbbbbbbbss..', '.sbbbbbbbbbbbbs.', '.sbblwwwwwwlbbs.',
-  'sbbwwwiiiiwwwbbs', 'sbbwwikkkkiwwbbs', 'sbbwwwiiiiwwwbbs', '.sbblwwwwwwlbbs.',
-  'ssbbbbbbbbbbbbss', 'sbssbbsbbsbbssbs', 'slsslbslbslbssls', '.s.sbbsbbsbbs.s.',
-  '...sblsblsbls...', '...sbbsbbsbbs...', '...ssssssssss...', '....s..s..s.....',
-  '...ooo....ooo...', '...ooo....ooo...', '......ooo.......', '......ooo.......',
-];
-const HAMSA_INK = { s: '#c9d1dc', b: '#1d3fa8', l: '#4f7fe0', w: '#f4f6fa', i: '#2f6fe0', k: '#0b1640', o: '#2f6fe8' };
 (function drawHamsa() {
   const px = 3;
   const rect = (x, y, c) => `<rect x="${x * px}" y="${y * px}" width="${px}" height="${px}" fill="${c}"/>`;
@@ -105,9 +96,7 @@ $('talisman').addEventListener('click', () => {
     () => { salvia.spook(); return 'the spook'; },
     () => { salvia.ghostnap(); return 'a nap by the figure, and a visitor'; },
   ];
-  const text = scenes[hamsaTurn++ % scenes.length]();
-  show($('notice'), text);
-  setTimeout(() => show($('notice'), ''), 3000);
+  scenes[hamsaTurn++ % scenes.length]();
 });
 
 // The treat packet: shake it (crinkle, crinkle) and Salvia comes running.
@@ -505,3 +494,26 @@ renderWeathers();
 floatTheGallery($('gallery-link'), $('floaters')).catch(console.error);
 loadSeries().catch((error) => { console.error(error); show($('status'), "couldn't load the scans"); });
 loadTracks().then(tune).catch((error) => { console.error(error); show($('onair'), `${STATION} is off air`); });
+
+// --- the gallery opens over the radio, so the music keeps playing ---
+// It's gallery.html in a frame; its "back to the radio" closes the frame again. While
+// it's open the radio stops drawing its own scene (the sound goes on).
+function openGallery() {
+  if ($('gallery-frame')) return;
+  const frame = Object.assign(document.createElement('iframe'), { id: 'gallery-frame', src: 'gallery.html?over', title: 'gallery of 3D scans' });
+  document.body.append(frame);
+  frame.addEventListener('load', () => frame.classList.add('open'));
+  stage.paused = true;
+}
+function closeGallery() {
+  const frame = $('gallery-frame');
+  if (!frame) return;
+  stage.paused = false;
+  frame.classList.remove('open');
+  frame.addEventListener('transitionend', () => frame.remove(), { once: true });
+  setTimeout(() => frame.remove(), 700);
+  $('gallery-link').focus();
+}
+$('gallery-link').addEventListener('click', (event) => { event.preventDefault(); openGallery(); });
+addEventListener('message', (event) => { if (event.origin === location.origin && event.data === 'close-gallery') closeGallery(); });
+addEventListener('keydown', (event) => { if (event.key === 'Escape') closeGallery(); });

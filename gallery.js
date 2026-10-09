@@ -151,3 +151,13 @@ renderer.setAnimationLoop((time) => {
 
 if (new URLSearchParams(location.search).has('clean')) document.body.classList.add('clean');
 load().catch((error) => { console.error(error); $('status').textContent = "couldn't load the gallery"; });
+
+// Opened over the radio (gallery.html?over): going back just closes this frame, so the
+// music, which is playing in the radio underneath, never stops.
+if (new URLSearchParams(location.search).has('over') && window.parent !== window) {
+  document.querySelector('.home').addEventListener('click', (event) => {
+    event.preventDefault();
+    window.parent.postMessage('close-gallery', location.origin);
+  });
+  addEventListener('keydown', (event) => { if (event.key === 'Escape') window.parent.postMessage('close-gallery', location.origin); });
+}

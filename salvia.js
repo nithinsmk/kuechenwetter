@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { SplatMesh } from '@sparkjsdev/spark';
 import { plantGarden, shadowBlob } from './plants.js';
+import { hamsaCanvas } from './hamsa.js';
 
 const FORMS = ['splat', 'pixel', 'cartoon'];
 const CAT_HEIGHT = 1.05; // in cat units, ears included
@@ -112,6 +113,33 @@ function furSplats(shapes, { colorOf } = {}) {
   });
 }
 
+// Her collar: a blue band round the neck with the evil-eye hamsa hanging at the front,
+// on a pivot so it swings and bounces as she moves (see pose()).
+function collar(r) {
+  const at = [0, 0.64, 0.4];
+  const radius = 0.19;
+  const band = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.026, 6, 24),
+    new THREE.MeshStandardMaterial({ color: '#2f5fd0', roughness: 0.45, flatShading: true }));
+  band.position.set(...at);
+  band.rotation.x = -0.64; // round the neck, which leans forward
+  r.body.add(band);
+  const pivot = new THREE.Group();
+  pivot.position.set(at[0], at[1] - radius * 0.8, at[2] + radius * 0.62);
+  const texture = new THREE.CanvasTexture(hamsaCanvas());
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const charm = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.16),
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide }));
+  charm.position.set(0, -0.09, 0.02);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.015, 0.006, 4, 10),
+    new THREE.MeshStandardMaterial({ color: '#c9d1dc', metalness: 0.7, roughness: 0.3 }));
+  pivot.add(charm, ring);
+  r.body.add(pivot);
+  r.pendant = pivot;
+  r.pendantY = pivot.position.y;
+}
+
 function buildSplat() {
   const r = rig();
   r.body.add(furSplats(BODY));
@@ -121,6 +149,7 @@ function buildSplat() {
   r.head.add(furSplats([FACE[4]]));
   r.tail.add(furSplats(TAIL));
   for (const leg of r.legs) leg.add(furSplats(LEG));
+  collar(r);
   return r;
 }
 
@@ -167,40 +196,71 @@ function buildCartoon() {
     add(leg, new THREE.CylinderGeometry(0.085, 0.095, 0.3, 6), fur, [0, -0.15, 0]);
     add(leg, ball(0), fur, [0, -0.33, 0.03], [0.1, 0.055, 0.11]);
   }
+  collar(r);
   return r;
 }
 
 // Pixel art, 20 × 16, facing right: a Persian, flat-faced, with a big ruff, dense fur
 // (w white, s shade, f pale highlight) and a plumed tail. k outline, p pink, a aquamarine
 // eye, e emerald eye, d pupil, g glint.
-const PIXELS = {
-  stand: [
-    '.............kk.kk..', '............kpkkpk..', '...........kwfwwfwk.', '..........kwwswwswk.',
-    '.kkk......kwadgedwk.', '.kwwk.....kwwwpwwwk.', '..kwwk..kkkwsfswfsk.', '...kwfkkwswwwwwwwsk.',
-    '....kwwwwfwwswwfsk..', '....kwswwwwwswwwk...', '....kwwwfswwwwfwk...', '.....kswwwwswwsk....',
-    '.....kssssssssk.....', '.....kwwk..kwwk.....', '.....kwwk..kwwk.....', '.....kkkk..kkkk.....'],
-  walk: [
-    '.............kk.kk..', '............kpkkpk..', '...........kwfwwfwk.', '..........kwwswwswk.',
-    '.kkk......kwadgedwk.', '.kwwk.....kwwwpwwwk.', '..kwwk..kkkwsfswfsk.', '...kwfkkwswwwwwwwsk.',
-    '....kwwwwfwwswwfsk..', '....kwswwwwwswwwk...', '....kwwwfswwwwfwk...', '.....kswwwwswwsk....',
-    '.....kssssssssk.....', '....kwwk....kwwk....', '...kwwk......kwwk...', '...kkkk......kkkk...'],
-  walk2: [
-    '.............kk.kk..', '............kpkkpk..', '...........kwfwwfwk.', '..........kwwswwswk.',
-    '.kkk......kwadgedwk.', '.kwwk.....kwwwpwwwk.', '..kwwk..kkkwsfswfsk.', '...kwfkkwswwwwwwwsk.',
-    '....kwwwwfwwswwfsk..', '....kwswwwwwswwwk...', '....kwwwfswwwwfwk...', '.....kswwwwswwsk....',
-    '.....kssssssssk.....', '......kwwkkwwk......', '.......kwwkwwk......', '.......kkkkkkk......'],
-  rear: [
-    '...........kk.kk....', '..........kpkkpk....', '.........kwfwwfwk...', '........kwwswwswk...',
-    '........kwadgedwk...', '........kwwwpwwwkk..', '.......kwsfswfskwwk.', '......kwwwwwwwwkwk..',
-    '.....kwswwfwwwsk....', '.kk..kwwwwswwfwk....', '.kwk.kwwswwwwwsk....', '..kwkkwwwfwwwwk.....',
-    '...kwkwsswwswk......', '....kkwwwwwwk.......', '.....kwwkkwwk.......', '.....kkkk.kkk.......'],
-  sleep: [
-    '....................', '....................', '....................', '....................',
-    '....................', '....................', '..............kk.kk.', '.......kkkkkkkwkkwk.',
-    '.....kkwwfwwswwwwwwk', '....kwwwwwwwwwwadgek', '...kwswwfwwsfwwwwpwk', '..kwwwwwwwwwwwwwwwk.',
-    '..kwfwwswwwwfwwwwsk.', '..kswwwwwwwwwwwwssk.', '...kkkkkkkkkkkkkkk..', '....................'],
+// The body, rows 0–12 (collar 'c' under the chin); legs and the pendant are added per frame.
+const BODY_PIXELS = [
+  '.............kk.kk..', '............kpkkpk..', '...........kwfwwfwk.', '..........kwwswwswk.',
+  '.kkk......kwadgedwk.', '.kwwk.....kwwwpwwwk.', '..kwwk..kkkwsfswfsk.', '...kwfkkwswccccccsk.',
+  '....kwwwwfwwswwfsk..', '....kwswwwwwswwwk...', '....kwwwfswwwwfwk...', '.....kswwwwswwsk....',
+  '.....kssssssssk.....',
+];
+const paint = (rows, x, y, text) => {
+  const row = rows[y].split('');
+  [...text].forEach((ch, i) => { if (ch !== '.' && x + i >= 0 && x + i < row.length) row[x + i] = ch; });
+  rows[y] = row.join('');
 };
-const INK = { k: '#55555a', w: '#f6f6f3', s: '#d3d3d8', f: '#ffffff', p: '#e6a3ad', a: '#5fe0d0', e: '#1f8a4c', d: '#1a1a1a', g: '#ffffff' };
+// A leg: hip at column x, the foot swung forward (+1) or back (-1), or lifted mid-step.
+function pixelLeg(rows, x, swing, ink, lifted) {
+  paint(rows, x, 13, `k${ink}${ink}k`);
+  paint(rows, x + Math.round(swing * 0.5), 14, lifted ? 'kkkk' : `k${ink}${ink}k`);
+  if (!lifted) paint(rows, x + swing, 15, 'kkkk');
+}
+// Near legs white, far legs shaded and a step further on; diagonal pairs move together.
+function pixelFrame({ nb = 0, fb = 0, nf = 0, ff = 0, lift = '', charm = [0, 0] }) {
+  const rows = [...BODY_PIXELS, '.'.repeat(20), '.'.repeat(20), '.'.repeat(20)];
+  pixelLeg(rows, 8, fb, 's', lift.includes('b'));
+  pixelLeg(rows, 13, ff, 's', lift.includes('f'));
+  pixelLeg(rows, 5, nb, 'w', lift.includes('B'));
+  pixelLeg(rows, 10, nf, 'w', lift.includes('F'));
+  const [dx, dy] = charm; // the hamsa on her chest, swinging
+  paint(rows, 14 + dx, 8 + dy, 'h');
+  paint(rows, 13 + dx, 9 + dy, 'owo');
+  paint(rows, 14 + dx, 10 + dy, 'o');
+  return rows;
+}
+const PIXELS = {
+  stand: pixelFrame({}),
+  walk0: pixelFrame({ nb: -1, ff: -1, fb: 1, nf: 1, charm: [1, 0] }),
+  walk1: pixelFrame({ lift: 'Bf', charm: [0, 1] }),
+  walk2: pixelFrame({ nb: 1, ff: 1, fb: -1, nf: -1, charm: [-1, 0] }),
+  walk3: pixelFrame({ lift: 'bF', charm: [0, 1] }),
+  rear: (() => {
+    const rows = [
+      '...........kk.kk....', '..........kpkkpk....', '.........kwfwwfwk...', '........kwwswwswk...',
+      '........kwadgedwk...', '........kwwwpwwwkk..', '.......kwsccccccwwk.', '......kwwwwwwwwkwk..',
+      '.....kwswwfwwwsk....', '.kk..kwwwwswwfwk....', '.kwk.kwwswwwwwsk....', '..kwkkwwwfwwwwk.....',
+      '...kwkwsswwswk......', '....kkwwwwwwk.......', '.....kwwkkwwk.......', '.....kkkk.kkk.......'];
+    paint(rows, 12, 7, 'h'); paint(rows, 11, 8, 'owo'); paint(rows, 12, 9, 'o');
+    return rows;
+  })(),
+  sleep: (() => {
+    const rows = [
+      '....................', '....................', '....................', '....................',
+      '....................', '....................', '..............kk.kk.', '.......kkkkkkkwkkwk.',
+      '.....kkwwfwwswwwwwwk', '....kwwwwwwwwwwadgek', '...kwswwfwwsfwwwwpwk', '..kwwwwwwwwwwwwwwwk.',
+      '..kwfwwswwwwfwwwwsk.', '..kswwwwwwwwwwwwssk.', '...kkkkkkkkkkkkkkk..', '....................'];
+    for (let y = 8; y <= 11; y++) paint(rows, 13, y, 'c');
+    paint(rows, 12, 12, 'o');
+    return rows;
+  })(),
+};
+const INK = { c: '#2f5fd0', h: '#c9d1dc', o: '#1d3fa8', k: '#55555a', w: '#f6f6f3', s: '#d3d3d8', f: '#ffffff', p: '#e6a3ad', a: '#5fe0d0', e: '#1f8a4c', d: '#1a1a1a', g: '#ffffff' };
 
 function pixelTexture(rows) {
   const canvas = document.createElement('canvas');
@@ -568,16 +628,25 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     tail.rotation.y = state.name === 'sleep' ? 1.7 : Math.sin(t * (walking ? 3 : 1.2)) * 0.35;
     tail.rotation.x = spooked ? -1.3 + Math.sin(t * 20) * 0.1 : state.name === 'sleep' ? 0.9 : state.name === 'run' ? 0.5 : state.name === 'friendly' ? -0.35 + Math.sin(t * 9) * 0.04 : 0;
 
+    if (cat.pendant) {
+      // The hamsa swings out with each step and settles back when she stops.
+      const bounce = walking ? Math.abs(Math.sin(t * (state.name === 'run' ? 18 : 9))) : 0;
+      cat.pendant.rotation.x = -0.12 - bounce * (state.name === 'run' ? 0.7 : 0.4) + Math.sin(t * 2.3) * 0.05;
+      cat.pendant.rotation.z = walking ? swing * 0.4 : Math.sin(t * 1.7) * 0.06;
+      cat.pendant.position.y = cat.pendantY + bounce * 0.012;
+    }
     if (cat.sprite) {
-      const { material, textures } = cat.sprite;
+      const { material, textures, sprite } = cat.sprite;
+      const step = Math.floor(t * (state.name === 'run' ? 14 : 7)) % 4; // four frames to a stride
       material.map = state.name === 'sleep' ? textures.sleep : rearing ? textures.rear
-        : walking ? (Math.sin(t * (state.name === 'run' ? 18 : 9)) > 0 ? textures.walk : textures.walk2) : textures.stand;
+        : walking ? textures[`walk${step}`] : textures.stand;
+      sprite.material.rotation = walking ? (step % 2 ? 0 : (step === 0 ? 0.03 : -0.03)) : 0;
       // Face left or right on screen, whichever way she's heading.
       facing.set(Math.sin(holder.rotation.y), 0, Math.cos(holder.rotation.y)).add(holder.position).project(camera);
       there.copy(holder.position).project(camera);
       material.map.repeat.x = facing.x < there.x ? -1 : 1;
       material.map.offset.x = facing.x < there.x ? 1 : 0;
-      cat.sprite.sprite.position.y = state.name === 'sleep' ? 0.45 : 0.64;
+      cat.sprite.sprite.position.y = (state.name === 'sleep' ? 0.45 : 0.64) + (walking && step % 2 ? 0.035 : 0); // up on the passing frames
     }
   }
 
@@ -815,6 +884,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     // Seen or not: hidden while the camera looks through her eyes.
     set seen(on) { if (cat) cat.root.visible = on; shadow.visible = on; },
     get size() { return ground?.size ?? 0; },
+    get pixelFrames() { return cat?.sprite?.textures ?? null; }, // for checking the drawings
     get state() { return state.name; },
     get plants() { return garden?.plants ?? []; },
     eat: (index) => { if (!garden?.plants[index]) return; if (!holder.visible) arrive(); eatPlant(garden.plants[index], true); },
