@@ -1,9 +1,11 @@
 # GitHub Pages: publish the radio and the label, not the keeper tools.
+# Jekyll excludes by prefix, so a bare "radio" would also hide radio.js and
+# radio.css. The "/*" patterns match only what is inside each folder.
 exclude:
-  - desk
-  - tools
-  - radio
-  - supabase
-  - documentation
+  - desk/*
+  - tools/*
+  - radio/*
+  - supabase/*
+  - documentation/*
   - README.md
   - CHANGELOG.md

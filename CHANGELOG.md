@@ -4,6 +4,7 @@ Each working prototype is a git tag. Newest first.
 
 | Version | Date | What it does |
 | --- | --- | --- |
+| v0.9.1 | 2026-10-09 | Fix: the live radio lost its scans and songs because the Pages exclude `radio` (meant for the keeper folder) also hid `radio.js` and `radio.css`. Excludes now match folder contents only (`radio/*`). |
 | v0.9 | 2026-10-09 | Weather playlists. The Berlin day belongs to the five weathers in turn (about 4 h 48 min each), each playing its own playlist; at every change of weather one song by نظيفة plays first. Requests can suggest a weather. The keeper desk (`python3 desk/server.py`, http://localhost:8772/desk/): on air and next, the day strip, who's listening, storage, requests (drop a file on one to fulfil it), drag-and-drop loading and the playlists, with songs moved between weathers. Broadcast logic shared in `broadcast.js`. |
 | v0.8 | 2026-10-08 | Ready for the mixtape: `keeper.py add-mix FOLDER --title T` adds a folder of songs as one show by Nazif Limpio Saaf that plays in order, each song named on air. The label now suits the fridge ("the sculpture is drying in the rack"). `?scan=2026-09-25` opens a date and `?clean` hides the interface, for documentation images. |
 | v0.7 | 2026-10-04 | Songs can go on air the same day without breaking sync: `keeper.py today ID` (or `add … --today`) pings every open radio, which reloads the song list at once. |
