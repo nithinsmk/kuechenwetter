@@ -6,6 +6,8 @@ let noise = null;
 
 function audio() {
   if (!ctx) {
+    // On iPhones, play through the silent switch like the radio does (iOS 17+).
+    if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const data = noise.getChannelData(0);
