@@ -316,6 +316,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     plantFor(`kitchen ${c.x.toFixed(2)} ${c.z.toFixed(2)}`);
     holder.scale.setScalar(size / CAT_HEIGHT);
     plan('away', 3000 + Math.random() * 4000);
+    if (pending) { const run = pending; pending = null; run(); }
   }
 
   function heightAt(x, z) {
@@ -340,6 +341,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
   const pick = (list) => list[Math.floor(Math.random() * list.length)];
   let state = { name: 'away', until: 0 };
   let purring = false;
+  let pending = null; // a scene asked for before the ground was measured
   const quiet = () => { if (purring) { purring = false; onPurring?.(false); } };
 
   // Her little 8-bit plants (plants.js), planted wherever she's walking.
@@ -738,7 +740,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     if (state.name === 'sleep') nextActivity();
   });
 
-  return {
+  const api = {
     enter: (object, focus, plant, ghost) => measure(object, focus, plant, ghost).catch((error) => console.warn('salvia:', error)),
     leave: () => { measuring++; if (reaper) { scene.remove(reaper.g); reaper = null; } ground = null; holder.visible = false; bubble.hidden = true; quiet(); uproot(); },
     // A scene that knows its own ground: { heightAt, cells: [[x, z, y]], size, holderAt, plantCell? }.
@@ -792,12 +794,14 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     becomeForm,
     summon: () => { if (ground) { plan('away', 0); } },
     investigate: () => {
-      if (!ground?.ghostCell) return;
+      if (!ground) { pending = () => api.investigate(); return; }
+      if (!ground.ghostCell) return;
       if (!holder.visible) arrive();
       say(pick(['…?', 'mrr?', '*ears forward*']), 1200);
       walkTo(ghostSpot() ?? ground.ghostCell, false, () => { say(pick(['*sniff*', '*stares at it*', 'hm.']), 2000); plan('sniff', 2500, { figure: true }); });
     },
-    spook: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); }); } },
-    ghostnap: () => { if (ground?.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { plan('sleep', 40000, { reaper: true }); setTimeout(summonReaper, 1500); }); } },
+    spook: () => { if (!ground) { pending = () => api.spook(); return; } if (ground.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { say('…?', 1500); plan('spook', 7000, { phase: 0 }); }); } },
+    ghostnap: () => { if (!ground) { pending = () => api.ghostnap(); return; } if (ground.ghostCell) { if (!holder.visible) arrive(); walkTo(ghostSpot() ?? ground.ghostCell, true, () => { plan('sleep', 40000, { reaper: true }); setTimeout(summonReaper, 1500); }); } },
   };
+  return api;
 }
