@@ -1,4 +1,4 @@
-// Salvia, the house cat, as the website's daemon. A white Persian, an eighth the
+// Salvia, the house cat, as the website's daemon. A white Persian, about a third the
 // height of the cutlery holder, living inside whichever scan is showing. She arrives,
 // checks in, sniffs about, eats the plant if there is one, sleeps, and runs off, then
 // comes back later. Tap her and she turns into her next form: soft splat blobs like
@@ -10,7 +10,9 @@ import * as THREE from 'three';
 import { SplatMesh } from '@sparkjsdev/spark';
 
 const FORMS = ['splat', 'pixel', 'cartoon'];
-const CAT_HEIGHT = 1.05; // in cat units, ears included; scaled to an eighth of the holder
+const CAT_HEIGHT = 1.05; // in cat units, ears included
+const OF_HOLDER = 2.5 / 8; // her height against the cutlery holder's (first an eighth, now 2.5 times that)
+const ON_THE_HILL = 2.5; // and 2.5 times her first size on the hill too
 
 // --- her shape, in cat units: facing +z, feet at y = 0 ---
 
@@ -282,10 +284,10 @@ export function makeSalvia({ scene, camera, canvas, onTenPets }) {
     const holderAt = tall.length
       ? tall.reduce((a, [[i, j]]) => [a[0] + (c.x + i * step) / tall.length, a[1] + (c.z + j * step) / tall.length], [0, 0])
       : [c.x, c.z];
-    const size = holderHeight / 8;
+    const size = holderHeight * OF_HOLDER;
     const cells = near
       .filter(([[i, j], y]) => Math.abs(y - floor) < size * 1.5
-        && Math.hypot(c.x + i * step - holderAt[0], c.z + j * step - holderAt[1]) > 0.13)
+        && Math.hypot(c.x + i * step - holderAt[0], c.z + j * step - holderAt[1]) > 0.13 + size * 0.6)
       .map(([[i, j], y]) => [c.x + i * step, c.z + j * step, y]);
     if (cells.length < 8) return;
     const plantCell = plant
@@ -485,8 +487,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets }) {
     // A scene that knows its own ground: { heightAt, cells: [[x, z, y]], size, holderAt, plantCell? }.
     walkOn: (spec) => {
       measuring++;
-      ground = { ...spec };
-      holder.scale.setScalar(spec.size / CAT_HEIGHT);
+      ground = { ...spec, size: spec.size * ON_THE_HILL };
+      holder.scale.setScalar(ground.size / CAT_HEIGHT);
       plan('away', 1500 + Math.random() * 2500);
     },
     update,
