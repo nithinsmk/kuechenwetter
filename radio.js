@@ -7,6 +7,7 @@ import { mountWheel } from './wheel.js';
 import { floatTheGallery } from './floaters.js';
 import { makeSalvia } from './salvia.js';
 import { buildHill } from './hill.js';
+import { crinkle, startPurr, stopPurr } from './sounds.js';
 
 const WEATHERS = ['fog_before_dawn', 'clearing_by_noon', 'showers_late_afternoon', 'humid_at_dusk', 'rain_after_midnight'];
 const STATION = 'Küchenwetter';
@@ -49,6 +50,29 @@ const salvia = makeSalvia({
   scene: stage.scene, camera, canvas: stage.renderer.domElement,
   // Pet her ten times in a row and the kitchen gives way to the hill for a few minutes.
   onTenPets: () => { hillUntil = Date.now() + 4 * 60 * 1000; showHill(); },
+  onPurring: (on) => (on ? startPurr() : stopPurr()),
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopPurr(); });
+
+// The treat packet: shake it (crinkle, crinkle) and Salvia comes running.
+$('treats').addEventListener('click', () => {
+  crinkle();
+  const packet = $('treats');
+  packet.classList.remove('shake');
+  void packet.offsetWidth; // restart the shake
+  packet.classList.add('shake');
+  for (let i = 0; i < 3; i++) {
+    const word = Object.assign(document.createElement('span'), {
+      className: 'crinkle-word',
+      textContent: ['krsh', 'crnkl', 'tssk', 'krinkl', 'rrsh', 'chk chk'][Math.floor(Math.random() * 6)],
+    });
+    word.style.setProperty('--dx', `${-40 + Math.random() * 60}px`);
+    word.style.setProperty('--turn', `${-20 + Math.random() * 40}deg`);
+    word.style.animationDelay = `${i * 0.12}s`;
+    word.addEventListener('animationend', () => word.remove());
+    packet.append(word);
+  }
+  salvia.call();
 });
 
 stage.onFrame = (time) => {

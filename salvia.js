@@ -212,7 +212,7 @@ const BUILD = { splat: buildSplat, pixel: buildPixel, cartoon: buildCartoon };
 
 // --- the daemon ---
 
-export function makeSalvia({ scene, camera, canvas, onTenPets }) {
+export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring }) {
   const holder = new THREE.Group(); // her place in the world: ground position and heading
   holder.visible = false;
   scene.add(holder);
@@ -245,6 +245,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets }) {
   let measuring = 0;
   async function measure(object, focus, plant, tries = 0) {
     const id = ++measuring;
+    quiet();
     ground = null;
     holder.visible = false;
     // Rays only hit a scan once it has been drawn, so wait for drawn frames (which also
@@ -319,6 +320,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets }) {
 
   const pick = (list) => list[Math.floor(Math.random() * list.length)];
   let state = { name: 'away', until: 0 };
+  let purring = false;
+  const quiet = () => { if (purring) { purring = false; onPurring?.(false); } };
   let target = null;
   let then = null;
   let speed = 0;
@@ -381,18 +384,21 @@ export function makeSalvia({ scene, camera, canvas, onTenPets }) {
       leg.visible = state.name !== 'sleep' || cat.sprite;
     });
     body.position.y = state.name === 'sleep' ? -0.3 : walking ? Math.abs(swing) * 0.02 : 0;
-    body.rotation.x = state.name === 'sit' ? -0.28 : 0;
-    if (state.name === 'sit') { legs[2].rotation.x = legs[3].rotation.x = -1.2; }
+    const sitting = state.name === 'sit' || state.name === 'friendly';
+    body.rotation.x = sitting ? -0.28 : 0;
+    body.rotation.z = state.name === 'friendly' ? Math.sin(t * 2.2) * 0.12 : 0; // rubbing against your leg
+    if (sitting) { legs[2].rotation.x = legs[3].rotation.x = -1.2; }
     head.rotation.x = state.name === 'eat' ? 0.55 + Math.sin(t * 8) * 0.08
       : state.name === 'sniff' ? 0.4 + Math.sin(t * 14) * 0.06
-        : state.name === 'sleep' ? 0.35 : state.name === 'sit' ? 0.28 : 0;
+        : state.name === 'sleep' ? 0.35 : sitting ? 0.28 : 0;
+    head.rotation.z = state.name === 'friendly' ? Math.sin(t * 1.4) * 0.18 : 0; // the head tilt
     // Sitting, she looks round at whoever's watching.
-    head.rotation.y = state.name === 'sit'
+    head.rotation.y = sitting
       ? THREE.MathUtils.clamp(Math.atan2(camera.position.x - holder.position.x, camera.position.z - holder.position.z) - holder.rotation.y, -0.9, 0.9)
       : state.name === 'sleep' ? 0.6 : 0;
     eyes.visible = state.name !== 'sleep';
     tail.rotation.y = state.name === 'sleep' ? 1.7 : Math.sin(t * (walking ? 3 : 1.2)) * 0.35;
-    tail.rotation.x = state.name === 'sleep' ? 0.9 : state.name === 'run' ? 0.5 : 0;
+    tail.rotation.x = state.name === 'sleep' ? 0.9 : state.name === 'run' ? 0.5 : state.name === 'friendly' ? -0.35 + Math.sin(t * 9) * 0.04 : 0;
 
     if (cat.sprite) {
       const { material, textures } = cat.sprite;
@@ -436,12 +442,24 @@ export function makeSalvia({ scene, camera, canvas, onTenPets }) {
         const y = THREE.MathUtils.lerp(holder.position.y, heightAt(here.x, here.y), Math.min(1, dt * 14));
         holder.position.set(here.x, y, here.y);
       }
+    } else if (state.name === 'friendly' && now <= state.until) {
+      // Turn the whole body towards whoever called her.
+      let turn = Math.atan2(camera.position.x - holder.position.x, camera.position.z - holder.position.z) - holder.rotation.y;
+      turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+      holder.rotation.y += turn * Math.min(1, dt * 4);
     } else if (now > state.until) {
       if (state.name === 'sleep') say('*stretches*');
+      if (state.name === 'friendly') say('*wanders off, satisfied*');
       nextActivity();
     }
 
     if (state.name === 'sleep' && Math.floor(t) % 4 === 0 && now > bubbleUntil) say('z z z', 1500);
+    if (state.name === 'friendly' && now > bubbleUntil) say(pick(['♥', 'prrrr ♥', '♥ ♥', '*headbutt*', '*slow blink*', 'prrrrrrr', '*rubs on you*']), 1700);
+    // Purr the whole time she's being friendly.
+    if ((state.name === 'friendly') !== purring) {
+      purring = state.name === 'friendly';
+      onPurring?.(purring);
+    }
     if (holder.visible) pose(t, dt);
 
     // Keep the bubble over her head.
@@ -483,15 +501,47 @@ export function makeSalvia({ scene, camera, canvas, onTenPets }) {
 
   return {
     enter: (object, focus, plant) => measure(object, focus, plant).catch((error) => console.warn('salvia:', error)),
-    leave: () => { measuring++; ground = null; holder.visible = false; bubble.hidden = true; },
+    leave: () => { measuring++; ground = null; holder.visible = false; bubble.hidden = true; quiet(); },
     // A scene that knows its own ground: { heightAt, cells: [[x, z, y]], size, holderAt, plantCell? }.
     walkOn: (spec) => {
       measuring++;
+      quiet();
       ground = { ...spec, size: spec.size * ON_THE_HILL };
       holder.scale.setScalar(ground.size / CAT_HEIGHT);
       plan('away', 1500 + Math.random() * 2500);
     },
     update,
+    // Someone shook the treats: she comes running to a spot in front of the holder,
+    // facing whoever's watching, and is very friendly for a while. Shaking again while
+    // she's there keeps her longer.
+    call() {
+      if (!ground) return false;
+      if (state.name === 'friendly') {
+        state.until = Math.max(state.until, performance.now() + 9000);
+        say(pick(['♥ ♥ ♥', 'PRRRR ♥', '*nom?*']));
+        return true;
+      }
+      // A spot she'll be seen in: low in the middle of the screen, as the camera is now.
+      const ndc = new THREE.Vector3();
+      const inView = ground.cells.map((cell) => {
+        ndc.set(cell[0], cell[2] + ground.size * 0.5, cell[1]).project(camera);
+        return { cell, x: ndc.x, y: ndc.y, z: ndc.z };
+      }).filter((c) => c.z < 1 && Math.abs(c.x) < 0.45 && c.y > -0.8 && c.y < 0.1);
+      const [hx, hz] = ground.holderAt;
+      const toward = [hx + (camera.position.x - hx) * 0.3, hz + (camera.position.z - hz) * 0.3];
+      const spot = inView.length
+        ? inView.reduce((a, b) => (Math.hypot(b.x, b.y + 0.45) < Math.hypot(a.x, a.y + 0.45) ? b : a)).cell
+        : ground.cells.reduce((best, cell) => (
+          Math.hypot(cell[0] - toward[0], cell[1] - toward[1]) < Math.hypot(best[0] - toward[0], best[1] - toward[1]) ? cell : best));
+      if (state.name === 'away' || !holder.visible) {
+        const start = edgeCell();
+        holder.position.set(start[0], heightAt(start[0], start[1]), start[1]);
+        holder.visible = true;
+      }
+      say(pick(['MRROW!', 'MRRP?!', '!!!']), 1400);
+      walkTo(spot, true, () => plan('friendly', 12000));
+      return true;
+    },
     get state() { return state.name; },
     get ground() { return ground && { floor: ground.floor, size: ground.size, holderAt: ground.holderAt, cells: ground.cells.length, plantCell: ground.plantCell }; },
     get where() { return holder.visible ? holder.position.toArray() : null; },

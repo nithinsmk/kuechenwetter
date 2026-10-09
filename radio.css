@@ -414,3 +414,32 @@ body.clean #salvia-says { display: none !important; }
 
 /* the 8-bit hill is drawn small and scaled up without smoothing */
 #stage canvas.pixelated { image-rendering: pixelated; }
+
+/* the treat packet: shake it and Salvia comes running */
+.here { display: flex; align-items: flex-end; gap: 8px; }
+#treats { position: relative; pointer-events: auto; padding: 0; }
+#treats svg { display: block; transform-origin: 50% 90%; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.3)); }
+#treats:hover svg { transform: rotate(-5deg); }
+#treats.shake svg { animation: treats-shake 0.55s ease; }
+@keyframes treats-shake {
+  15% { transform: rotate(-16deg) translateY(-3px); }
+  30% { transform: rotate(13deg); }
+  45% { transform: rotate(-11deg) translateY(-2px); }
+  60% { transform: rotate(8deg); }
+  80% { transform: rotate(-4deg); }
+}
+.crinkle-word {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  padding: 0 4px;
+  background: var(--chip);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: crinkle-rise 0.9s ease-out forwards;
+}
+@keyframes crinkle-rise {
+  from { opacity: 1; transform: translate(var(--dx), 4px) rotate(0deg); }
+  to { opacity: 0; transform: translate(var(--dx), -38px) rotate(var(--turn)); }
+}
