@@ -28,7 +28,7 @@ export function berlinMidnight(now) {
   return start;
 }
 
-function seededRandom(text) {
+export function seededRandom(text) {
   let a = 2166136261;
   for (const ch of text) a = Math.imul(a ^ ch.codePointAt(0), 16777619);
   return () => {

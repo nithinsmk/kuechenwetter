@@ -79,6 +79,12 @@ export function createStage(container, options = {}) {
       throw error;
     }
     if (id !== loadId) { disposeScan(object); return null; }
+    return place(object);
+  }
+
+  // Swap in an object that's already built (a scan, or a scene made in code).
+  function place(object) {
+    ++loadId; // a slower load still running won't replace it
     if (current) { scene.remove(current); disposeScan(current); }
     current = object;
     scene.add(object);
@@ -87,7 +93,7 @@ export function createStage(container, options = {}) {
   }
 
   return {
-    renderer, scene, camera, controls, show,
+    renderer, scene, camera, controls, show, place,
     reset: () => controls.reset(),
     get current() { return current; },
     set onFrame(fn) { onFrame = fn; }, // called every frame, before the controls update

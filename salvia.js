@@ -210,7 +210,7 @@ const BUILD = { splat: buildSplat, pixel: buildPixel, cartoon: buildCartoon };
 
 // --- the daemon ---
 
-export function makeSalvia({ scene, camera, canvas }) {
+export function makeSalvia({ scene, camera, canvas, onTenPets }) {
   const holder = new THREE.Group(); // her place in the world: ground position and heading
   holder.visible = false;
   scene.add(holder);
@@ -298,6 +298,7 @@ export function makeSalvia({ scene, camera, canvas }) {
 
   function heightAt(x, z) {
     if (!ground) return 0;
+    if (ground.heightAt) return ground.heightAt(x, z); // a scene that knows its own ground
     const { grid, step, c, floor } = ground;
     const fi = (x - c.x) / step;
     const fj = (z - c.z) / step;
@@ -339,7 +340,7 @@ export function makeSalvia({ scene, camera, canvas }) {
 
   function nearHolder() {
     const [hx, hz] = ground.holderAt;
-    const close = ground.cells.filter((cell) => Math.hypot(cell[0] - hx, cell[1] - hz) < 0.24);
+    const close = ground.cells.filter((cell) => Math.hypot(cell[0] - hx, cell[1] - hz) < Math.max(0.24, ground.size * 2));
     return close.length ? pick(close) : pick(ground.cells);
   }
 
@@ -350,7 +351,7 @@ export function makeSalvia({ scene, camera, canvas }) {
       case 'wander': return walkTo(pick(ground.cells), false, nextActivity);
       case 'sniff': return walkTo(pick(ground.cells), false, () => { say('*sniff sniff*'); plan('sniff', 2500 + Math.random() * 2000); });
       case 'checkin': return walkTo(nearHolder(), false, () => { say(pick(['mrrp', 'mrrp?', '*checks in*'])); plan('sit', 4000 + Math.random() * 3000); });
-      case 'plant': return walkTo(ground.plantCell, false, () => { say('*nom nom* (your plant)'); plan('eat', 5000 + Math.random() * 3000); });
+      case 'plant': return walkTo(ground.plantCell, false, () => { say(ground.plantWords ?? '*nom nom* (your plant)'); plan('eat', 5000 + Math.random() * 3000); });
       case 'sleep': return walkTo(pick(ground.cells), false, () => plan('sleep', 20000 + Math.random() * 25000));
       default: return walkTo(edgeCell(), true, () => { say('!'); plan('away', 40000 + Math.random() * 80000); });
     }
@@ -429,7 +430,9 @@ export function makeSalvia({ scene, camera, canvas }) {
         holder.rotation.y += turn * Math.min(1, dt * 6);
         const stepLength = Math.min(left, speed * dt);
         here.add(to.normalize().multiplyScalar(stepLength));
-        holder.position.set(here.x, heightAt(here.x, here.y), here.y);
+        // Ease up and down, so on the blocky hill she hops from step to step.
+        const y = THREE.MathUtils.lerp(holder.position.y, heightAt(here.x, here.y), Math.min(1, dt * 14));
+        holder.position.set(here.x, y, here.y);
       }
     } else if (now > state.until) {
       if (state.name === 'sleep') say('*stretches*');
@@ -450,6 +453,8 @@ export function makeSalvia({ scene, camera, canvas }) {
 
   // Tap her and she changes form (and wakes up).
   let down = null;
+  let pets = 0;
+  let lastPet = 0;
   canvas.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
   canvas.addEventListener('pointerup', (e) => {
     if (!down || !holder.visible || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
@@ -458,13 +463,32 @@ export function makeSalvia({ scene, camera, canvas }) {
     const sx = rect.left + ((there.x + 1) / 2) * rect.width;
     const sy = rect.top + ((1 - there.y) / 2) * rect.height;
     if (Math.hypot(e.clientX - sx, e.clientY - sy) > 28) return;
+    // Each pet turns her into her next form; ten in a row (no pause over two seconds)
+    // and she purrs the kitchen away.
+    const now = performance.now();
+    pets = now - lastPet < 2000 ? pets + 1 : 1;
+    lastPet = now;
     becomeForm(formIndex + 1);
-    say(pick(['*poof*', '*shimmer*', 'mrrp!']));
+    if (pets >= 10) {
+      pets = 0;
+      say('*PRRRRRRRRRR*', 2000);
+      setTimeout(() => onTenPets?.(), 1400);
+    } else {
+      say(pets >= 7 ? 'PRRRR' : pets >= 4 ? 'prrr' : pick(['*poof*', '*shimmer*', 'mrrp!']));
+    }
     if (state.name === 'sleep') nextActivity();
   });
 
   return {
     enter: (object, focus, plant) => measure(object, focus, plant).catch((error) => console.warn('salvia:', error)),
+    leave: () => { measuring++; ground = null; holder.visible = false; bubble.hidden = true; },
+    // A scene that knows its own ground: { heightAt, cells: [[x, z, y]], size, holderAt, plantCell? }.
+    walkOn: (spec) => {
+      measuring++;
+      ground = { ...spec };
+      holder.scale.setScalar(spec.size / CAT_HEIGHT);
+      plan('away', 1500 + Math.random() * 2500);
+    },
     update,
     get state() { return state.name; },
     get ground() { return ground && { floor: ground.floor, size: ground.size, holderAt: ground.holderAt, cells: ground.cells.length, plantCell: ground.plantCell }; },

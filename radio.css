@@ -411,3 +411,6 @@ body.clean .floater { display: none !important; }
   pointer-events: none;
 }
 body.clean #salvia-says { display: none !important; }
+
+/* the 8-bit hill is drawn small and scaled up without smoothing */
+#stage canvas.pixelated { image-rendering: pixelated; }

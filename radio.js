@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
 import { SUPABASE_URL, SUPABASE_KEY, AUDIO_URL } from './config.js';
 import { SCAN_DIR, createStage, progressText } from './scan.js';
-import { makeBroadcast } from './broadcast.js';
+import { makeBroadcast, berlinClock, seededRandom } from './broadcast.js';
 import { mountWheel } from './wheel.js';
 import { floatTheGallery } from './floaters.js';
 import { makeSalvia } from './salvia.js';
+import { buildHill } from './hill.js';
 
 const WEATHERS = ['fog_before_dawn', 'clearing_by_noon', 'showers_late_afternoon', 'humid_at_dusk', 'rain_after_midnight'];
 const STATION = 'Küchenwetter';
@@ -44,7 +45,11 @@ function swayFrame(time) {
 }
 
 // Salvia, the house cat, lives in whichever scan is showing (see salvia.js).
-const salvia = makeSalvia({ scene: stage.scene, camera, canvas: stage.renderer.domElement });
+const salvia = makeSalvia({
+  scene: stage.scene, camera, canvas: stage.renderer.domElement,
+  // Pet her ten times in a row and the kitchen gives way to the hill for a few minutes.
+  onTenPets: () => { hillUntil = Date.now() + 4 * 60 * 1000; showHill(); },
+});
 
 stage.onFrame = (time) => {
   swayFrame(time);
@@ -57,25 +62,80 @@ controls.addEventListener('end', () => { resumeSway = setTimeout(startSway, 8000
 let series = [];
 const dateLabel = (date) => date.slice(8, 10) + '.' + date.slice(5, 7);
 
-async function showScan(date) {
-  const item = series.find((s) => s.date === date);
-  if (!item) return;
-  for (const b of $('dates').children) b.setAttribute('aria-current', String(b.dataset.date === date));
-  show($('work'), item.title || '');
-  show($('status'), 'loading the kitchen');
+// The 8-bit green hill (hill.js), our own blocky landscape after that desktop hill.
+// It replaces the drainer for one hour a day (the same hour for everyone, a different
+// one each day), and when someone pets Salvia ten times in a row. It's drawn at a low
+// resolution, so it comes out pixelated, and Salvia roams it too.
+const hillHour = (day) => 8 + Math.floor(seededRandom(`${day}|hill`)() * 15); // starts between 08 and 22
+function inHillHour(now = Date.now()) {
+  const { day, seconds } = berlinClock(now);
+  return Math.floor(seconds / 3600) === hillHour(day);
+}
+let showing = null; // a date, or 'hill'
+let chosen = false; // someone picked a date by hand
+let hillUntil = 0; // the easter egg's hill lasts a few minutes
+
+// Back from the hill: full resolution, no painted sky.
+function crisp() {
+  stage.scene.background = null;
+  stage.renderer.domElement.classList.remove('pixelated');
+  stage.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  stage.renderer.setSize(stage.renderer.domElement.clientWidth, stage.renderer.domElement.clientHeight, false);
+}
+
+async function display(item, label) {
+  show($('status'), `loading ${label}`);
   try {
     const shown = await stage.show({ url: SCAN_DIR + item.file, name: item.file, focus: item.focus },
-      (loaded, total) => show($('status'), `loading the kitchen · ${progressText(loaded, total)}`));
-    if (shown) {
-      show($('status'), '');
-      startSway();
-      salvia.enter(shown, shown.userData.focus ?? new THREE.Sphere(new THREE.Vector3(...item.focus.center), item.focus.radius), item.plant);
-    }
+      (loaded, total) => show($('status'), `loading ${label} · ${progressText(loaded, total)}`));
+    if (!shown) return;
+    show($('status'), '');
+    crisp();
+    salvia.enter(shown, shown.userData.focus ?? new THREE.Sphere(new THREE.Vector3(...item.focus.center), item.focus.radius), item.plant);
+    startSway();
   } catch (error) {
     console.error(error);
-    show($('status'), "couldn't load the kitchen");
+    show($('status'), `couldn't load ${label}`);
   }
 }
+
+async function showScan(date, byHand = false) {
+  const item = series.find((s) => s.date === date);
+  if (!item) return;
+  if (byHand) { chosen = true; hillUntil = 0; }
+  showing = date;
+  for (const b of $('dates').children) b.setAttribute('aria-current', String(b.dataset.date === date));
+  show($('work'), item.title || '');
+  await display(item, 'the kitchen');
+}
+
+function showHill() {
+  if (showing === 'hill') return;
+  showing = 'hill';
+  for (const b of $('dates').children) b.setAttribute('aria-current', 'false');
+  show($('work'), '');
+  const hill = buildHill();
+  stage.place(hill.group);
+  stage.scene.background = hill.sky;
+  // Draw about 220 pixels tall and let the browser scale them up, unsmoothed.
+  const canvas = stage.renderer.domElement;
+  canvas.classList.add('pixelated');
+  stage.renderer.setPixelRatio(Math.min(1, 220 / Math.max(1, canvas.clientHeight)));
+  stage.renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+  camera.position.set(...hill.view.from);
+  controls.target.set(...hill.view.to);
+  controls.update();
+  controls.saveState();
+  salvia.walkOn(hill.ground);
+  startSway();
+}
+
+// Every half minute: is it the hill's hour (or still the easter egg's few minutes)?
+setInterval(() => {
+  const hill = Date.now() < hillUntil || (!chosen && inHillHour());
+  if (hill && showing !== 'hill') showHill();
+  if (!hill && showing === 'hill') showScan(series.at(-1)?.date);
+}, 30 * 1000);
 
 async function loadSeries() {
   series = await fetch('scans/series.json', { cache: 'no-store' }).then((r) => r.json());
@@ -86,12 +146,16 @@ async function loadSeries() {
     button.dataset.date = item.date;
     button.textContent = dateLabel(item.date);
     if (item.title) button.title = item.title;
-    button.addEventListener('click', () => showScan(item.date));
+    button.addEventListener('click', () => showScan(item.date, true));
     $('dates').appendChild(button);
   }
   // ?scan=2026-09-25 opens a particular date; otherwise the latest state of the drainer.
-  const wanted = new URLSearchParams(location.search).get('scan');
-  showScan(series.some((s) => s.date === wanted) ? wanted : series.at(-1)?.date);
+  // ?hill shows the hill (also for documentation).
+  const params = new URLSearchParams(location.search);
+  const wanted = params.get('scan');
+  if (series.some((s) => s.date === wanted)) return showScan(wanted, true);
+  if (params.has('hill') || inHillHour()) return showHill();
+  showScan(series.at(-1)?.date);
 }
 
 // --- the broadcast: five weathers in turn, the same for everyone (see broadcast.js) ---
@@ -292,7 +356,7 @@ $('about-open').addEventListener('click', () => $('about').showModal());
 if (new URLSearchParams(location.search).has('clean')) document.body.classList.add('clean');
 
 if (new URLSearchParams(location.search).has('debug')) {
-  window.kw = { audio, stage, broadcast, onAir: () => onAir(Date.now()), owners, wheel, salvia };
+  window.kw = { audio, stage, broadcast, onAir: () => onAir(Date.now()), owners, wheel, salvia, showHill, hillHour, inHillHour };
 }
 
 renderWeathers();
