@@ -136,6 +136,49 @@ def cmd_requests(args):
         print(f"{row['id'][:8]}  {when}  {row['song']}")
 
 
+def cmd_stats(args):
+    """The listening log (supabase/04-listen-log.sql), summed up: who's online now, how many
+    devices have ever tuned in, and each Berlin day on its own."""
+    rows, start = [], 0
+    while True:
+        page = call('GET', '/rest/v1/listen_log?select=device,kind,what,amount,created_at&order=id',
+                    headers={'Range': f'{start}-{start + 999}'}) or []
+        rows += page
+        if len(page) < 1000:
+            break
+        start += 1000
+    now = dt.datetime.now(dt.timezone.utc)
+    online, devices, days = set(), set(), {}
+    for row in rows:
+        at = dt.datetime.fromisoformat(row['created_at'])
+        devices.add(row['device'])
+        if now - at < dt.timedelta(minutes=2, seconds=30):
+            online.add(row['device'])
+        day = days.setdefault(at.astimezone(BERLIN).date().isoformat(),
+                              {'visits': 0, 'devices': set(), 'seconds': 0, 'taps': {}})
+        day['devices'].add(row['device'])
+        if row['kind'] == 'visit':
+            day['visits'] += 1
+        elif row['kind'] == 'listen':
+            day['seconds'] += row['amount']
+        elif row['kind'] == 'tap' and row['what']:
+            day['taps'][row['what']] = day['taps'].get(row['what'], 0) + row['amount']
+    out = {
+        'online': len(online),
+        'devices': len(devices),
+        'visits': sum(d['visits'] for d in days.values()),
+        'days': [{'day': k, 'visits': d['visits'], 'devices': len(d['devices']), 'minutes': round(d['seconds'] / 60),
+                  'taps': sorted(d['taps'].items(), key=lambda t: -t[1])[:8]}
+                 for k, d in sorted(days.items(), reverse=True)],
+    }
+    if getattr(args, 'json', False):
+        return print(json.dumps(out))
+    print(f"online now: {out['online']}   devices ever: {out['devices']}   visits: {out['visits']}")
+    for d in out['days']:
+        taps = ', '.join(f'{w} ×{n}' for w, n in d['taps']) or 'no taps'
+        print(f"{d['day']}  {d['visits']} visits, {d['devices']} devices, {d['minutes']} min listened · {taps}")
+
+
 def cmd_tracks(_):
     rows = call('GET', '/rest/v1/tracks?select=id,artist,title,part,seconds,added_at,file&order=added_at')
     if not rows:
@@ -274,6 +317,9 @@ def main():
     req.add_argument('--json', action='store_true')
     req.set_defaults(run=cmd_requests)
     sub.add_parser('tracks').set_defaults(run=cmd_tracks)
+    stats = sub.add_parser('stats', help='the listening log, per day')
+    stats.add_argument('--json', action='store_true')
+    stats.set_defaults(run=cmd_stats)
     add = sub.add_parser('add')
     add.add_argument('file')
     add.add_argument('--artist', required=True)

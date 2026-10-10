@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>the plants, all kinds</title>
+  <!-- A contact sheet of plants.js: every kind side by side, turning slowly. -->
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js" } }
+  </script>
+  <style>
+    body { margin: 0; background: #a5714c; font: 12px monospace; color: #fff; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script type="module">
+    import * as THREE from 'three';
+    import { KINDS, grow, seeded, makeBed } from '../plants.js';
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(devicePixelRatio);
+    document.body.append(renderer.domElement);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#a5714c');
+    scene.add(new THREE.HemisphereLight('#ffffff', '#6b4a30', 2.2), new THREE.DirectionalLight('#ffffff', 1.6));
+    const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 3.2, 19);
+    camera.lookAt(0, 1.4, 0);
+    const meshes = KINDS.map((kind, i) => {
+      const { mesh } = grow(kind, seeded(kind.name + location.hash), 1);
+      mesh.position.set((i - (KINDS.length - 1) / 2) * 1.55, 0, 0);
+      scene.add(mesh);
+      return mesh;
+    });
+    const bed = makeBed(1); // Salvia's mattress, in front
+    bed.group.position.set(0, 0, 4);
+    bed.group.rotation.y = 0.3;
+    scene.add(bed.group);
+    if (location.search.includes('open')) for (let k = 0; k < 300; k++) { bed.visit(k * 16); bed.update(k * 16); } // skip the unrolling
+    renderer.setAnimationLoop((t) => {
+      for (const m of meshes) m.rotation.y = t / 2500;
+      if (location.search.includes('open')) bed.visit(t + 5000); // ?open: as if Salvia were on it
+      bed.update(t + 5000);
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>

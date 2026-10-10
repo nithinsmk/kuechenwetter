@@ -9,6 +9,7 @@ import { makeSalvia } from './salvia.js';
 import { buildHill } from './hill.js';
 import { HAMSA, HAMSA_INK } from './hamsa.js';
 import { mountAquarium } from './aquarium.js';
+import { startLog } from './listenlog.js';
 import { makeTheyyam } from './theyyam.js';
 import { crinkle, startPurr, stopPurr, hiss } from './sounds.js';
 
@@ -55,6 +56,7 @@ const salvia = makeSalvia({
   onTenPets: () => { hillUntil = Date.now() + 4 * 60 * 1000; showHill(); },
   onPurring: (on) => (on ? startPurr() : stopPurr()),
   // When she naps in the spoon corner, he sometimes comes and lies down beside her.
+  onTap: (what) => log.tap(what),
   onGhostNap: () => { if (Math.random() < 0.5) callTheyyam('sleep'); },
   onHiss: hiss,
 });
@@ -334,6 +336,7 @@ async function loadTracks() {
 // --- the player ---
 
 const audio = new Audio();
+const log = startLog({ audio });
 audio.preload = 'auto';
 let listening = false;
 

@@ -47,6 +47,7 @@ export const LINES = {
   '*slow blink*': { ar: '*ترمش ببطء*', es: '*parpadeo lento*', ml: '*പതുക്കെ കണ്ണുചിമ്മുന്നു*', fr: '*clignement lent*', ur: '*آہستہ سے پلک جھپکتی ہے*' },
   '*rubs on you*': { ar: '*تتمسّح بك*', es: '*se frota contigo*', ml: '*നിന്നോട് ഉരുമ്മുന്നു*', fr: '*se frotte contre toi*', ur: '*تم سے لپٹتی ہے*' },
   '*kneads the counter*': { ar: '*تعجن المكان بكفّيها*', es: '*amasa la encimera*', ml: '*കൈകൊണ്ട് കുഴയ്ക്കുന്നു*', fr: '*pétrit le plan de travail*', ur: '*پنجوں سے آٹا گوندھتی ہے*' },
+  '*kneads the mattress*': { ar: '*تعجن الفرشة بكفّيها*', es: '*amasa el colchón*', ml: '*മെത്തയിൽ കുഴയ്ക്കുന്നു*', fr: '*pétrit le matelas*', ur: '*گدّے پر آٹا گوندھتی ہے*' },
   '*toe beans*': { ar: '*وسائد كفوفها الصغيرة*', es: '*almohadillas*', ml: '*കുഞ്ഞു പാദങ്ങൾ*', fr: '*coussinets*', ur: '*ننھے پنجے*' },
   '*tail up, happy*': { ar: '*ذيلها مرفوع، سعيدة*', es: '*cola arriba, feliz*', ml: '*വാൽ പൊക്കി, സന്തോഷം*', fr: '*queue en l\'air, contente*', ur: '*دم اونچی، خوش*' },
 };

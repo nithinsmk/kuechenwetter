@@ -359,7 +359,7 @@ const BUILD = { persian: buildPersian, splat: buildSplat, pixel: buildPixel, car
 
 // --- the daemon ---
 
-export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss, onGhostNap }) {
+export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss, onGhostNap, onTap }) {
   const holder = new THREE.Group(); // her place in the world: ground position and heading
   holder.visible = false;
   scene.add(holder);
@@ -457,7 +457,12 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     if (pending) { const run = pending; pending = null; run(); }
   }
 
+  // The ground, plus the mattress's thickness when she's on it.
   function heightAt(x, z) {
+    const y = groundAt(x, z);
+    return garden?.bed?.on(x, z) ? y + garden.bed.h : y;
+  }
+  function groundAt(x, z) {
     if (!ground) return 0;
     if (ground.heightAt) return ground.heightAt(x, z); // a scene that knows its own ground
     const { grid, step, c, floor } = ground;
@@ -524,8 +529,12 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
     return close.length ? pick(close) : pick(ground.cells);
   }
 
+  let toBed = false; // on her way to the mattress (so it unrolls for her)
   function nextActivity() {
+    toBed = false;
     const options = ['wander', 'wander', 'sniff', 'sniff', 'checkin', 'sleep', 'runaway'];
+    const bed = garden?.bed ? [garden.bed.x, garden.bed.z] : null;
+    if (bed) options.push('bed', 'sleep');
     if (ground.plantCell || garden?.plants.length) options.push('plant', 'plant', 'plant');
     if (diving) options.push('koi', 'koi', 'koi');
     else options.push('play');
@@ -549,7 +558,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       case 'plant':
         if (garden?.plants.length && (!ground.plantCell || Math.random() < 0.75)) return eatPlant(pick(garden.plants), false);
         return walkTo(ground.plantCell, false, () => { say(ground.plantWords ?? '*nom nom* (your plant)'); plan('eat', 5000 + Math.random() * 3000); });
-      case 'sleep': return walkTo(pick(ground.cells), false, () => plan('sleep', 20000 + Math.random() * 25000));
+      case 'sleep': toBed = !!bed; return walkTo(bed ?? pick(ground.cells), false, () => plan('sleep', 20000 + Math.random() * 25000));
+      case 'bed': toBed = true; return walkTo(bed, false, () => { say(pick(['*kneads the mattress*', '*loaf mode*', '*slow blink*', 'prrrr ♥'])); plan('sit', 5000 + Math.random() * 4000); });
       default: return walkTo(edgeCell(), true, () => { say('!'); plan('away', 40000 + Math.random() * 80000); });
     }
   }
@@ -777,6 +787,8 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
       }
     }
     for (const plant of garden?.plants ?? []) plant.update(now);
+    if (garden?.bed && holder.visible && (toBed || garden.bed.onIt(holder.position.x, holder.position.z))) garden.bed.visit(now);
+    garden?.bed?.update(now);
     if (state.name === 'sleep' && Math.floor(t) % 4 === 0 && now > bubbleUntil) say('z z z', 1500);
     if (state.name === 'friendly' && now > bubbleUntil) say(pick(['♥', 'prrrr ♥', '♥ ♥', '*headbutt*', '*slow blink*', 'prrrrrrr', '*rubs on you*', '*loves you*', '*kneads the counter*', '*toe beans*', '*tail up, happy*']), 1700);
     // Purr the whole time she's being friendly.
@@ -831,6 +843,7 @@ export function makeSalvia({ scene, camera, canvas, onTenPets, onPurring, onHiss
   canvas.addEventListener('pointerup', (e) => {
     if (!down || !ground || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
     const { her, plant, figure } = under(e);
+    onTap?.(her ? 'Salvia (pet)' : plant ? `plant: ${plant.name}` : figure ? 'the figure' : null);
     if (figure && !her) {
       // The figure: she comes over to investigate. Usually a sniff and a long look;
       // one time in three it gets to her.
