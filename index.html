@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
   <title>Küchenwetter</title>
-  <link rel="stylesheet" href="radio.css">
+  <link rel="stylesheet" href="radio.css?v=21"> <!-- bump ?v= with each release, so browsers fetch it fresh -->
   <script type="importmap">
     {
       "imports": {
@@ -24,6 +24,13 @@
   <header id="station">
     <h1>Küchenwetter</h1>
     <p id="onair">tuning in…</p>
+    <a id="credit" target="_blank" rel="noopener" hidden></a>
+    <!-- the radio: tap to turn the dial between KMX169, NTS 1, NTS 2 and AlHara (boombox.js);
+         on a phone it's a small 📻 button -->
+    <p id="dial" hidden>
+      <button type="button" id="radio" title="tap to switch station"><span class="boom-art"></span><span class="emoji" aria-hidden="true">📻⇄</span></button>
+      <span class="hint">⇄ tap to switch station</span>
+    </p>
     <p id="weather"></p>
     <p id="listeners" aria-live="polite"></p>
     <p id="status" role="status" hidden></p>
@@ -31,11 +38,19 @@
   </header>
 
   <section id="threshold" aria-labelledby="choose">
+    <!-- first a weather, then a station; then you're in the kitchen -->
     <h2 id="choose">choose your weather</h2>
     <div class="picker">
       <!-- pixel Salvia, sitting on the buttons and pawing at them (radio.js) -->
       <span id="guide" aria-hidden="true"><canvas></canvas><span class="says"></span></span>
       <div id="weathers"></div>
+    </div>
+    <div id="station-step" hidden>
+      <h2 id="choose-station">choose your station</h2>
+      <!-- the big radio, with the four stations round it; pick one (a name or its button) -->
+      <div class="picker"><div id="stations"><span class="big-radio"></span></div></div>
+      <p class="later">switch any time with the radio by now playing</p>
+      <button type="button" id="back-weathers">← another weather</button>
     </div>
     <p id="outside" hidden>all five weathers are in the kitchen.<br>wait here; one will clear.</p>
     <p id="notice" role="status" hidden></p>
@@ -73,7 +88,8 @@
     <nav id="dates" aria-label="Scans by date"></nav>
   </footer>
 
-  <!-- bottom right: the toys. The hamsa plays the figure's scenes (radio.js), four taps on
+  <!-- bottom right: the toys. The radio turns between KMX169 and three live stations
+       (boombox.js, radio.js); the hamsa plays the figure's scenes (radio.js), four taps on
        the fish bowl flood the kitchen (aquarium.js), the treats call Salvia (salvia.js). -->
   <div id="toys">
     <button type="button" id="talisman" aria-label="the hamsa (Salvia and the figure)" title="the hamsa"></button>
@@ -147,6 +163,6 @@
     <form method="dialog"><button>close</button></form>
   </dialog>
 
-  <script type="module" src="radio.js"></script>
+  <script type="module" src="radio.js?v=21"></script>
 </body>
 </html>

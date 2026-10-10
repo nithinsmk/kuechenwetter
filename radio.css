@@ -541,7 +541,7 @@ body.clean #water { display: none; }
 
 /* --- the four corners: radio top left; wheel and follow top right;
    requests, site links and scans bottom left; toys bottom right --- */
-footer { right: calc(16px + 112px); align-items: flex-start; }
+footer { right: calc(16px + 212px); align-items: flex-start; } /* clear of the toys */
 footer .links { display: flex; gap: 8px; }
 #leave { pointer-events: auto; width: fit-content; padding: 2px 6px; background: var(--chip); color: var(--muted); }
 #leave:hover { color: var(--ink); }
@@ -619,3 +619,63 @@ body.outside #guide { display: block; }
   footer { display: none; }
   #toys { transform: scale(0.82); transform-origin: right bottom; }
 }
+
+/* --- the radio toy: a boombox that bounces while it plays --- */
+#radio { padding: 0; pointer-events: auto; }
+#radio svg { display: block; }
+#radio .needle { transition: transform 0.35s cubic-bezier(.3,1.6,.5,1); }
+#radio .key.down, .big-radio .key.down { transform: translateY(2px); }
+#radio .key.down rect:nth-child(n+5), .big-radio .key.down rect:nth-child(n+5) { fill: #ffcf5a; } /* the lit letter on the pressed button */
+#radio.playing .boom { animation: boom 0.48s steps(2) infinite; }
+#radio.playing .cone { animation: cone 0.24s steps(2) infinite; }
+@keyframes boom { 50% { transform: translateY(-3px); } }
+@keyframes cone { 50% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { #radio.playing .boom, #radio.playing .cone { animation: none; } }
+#credit { pointer-events: auto; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+#credit:hover { color: var(--ink); }
+#credit:not([href]) { text-decoration: none; pointer-events: none; }
+
+/* the station step, like the weathers */
+#station-step { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#station-step[hidden] { display: none !important; }
+#stations { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+#stations button { pointer-events: auto; display: flex; justify-content: space-between; gap: 12px; padding: 11px 12px; text-align: left; border: 1px solid var(--ink); background: var(--chip); }
+#stations button:hover, #stations button:focus-visible { background: var(--ink); color: var(--bg); outline: none; }
+#stations small { font-size: inherit; color: var(--muted); }
+#stations button:hover small { color: inherit; }
+#station-step .later, #back-weathers { padding: 2px 6px; background: var(--chip); color: var(--muted); pointer-events: auto; }
+#back-weathers:hover { color: var(--ink); }
+/* the radio by now playing: the boombox and its hint; on a phone a small 📻 button */
+#dial { display: flex; align-items: center; gap: 8px; background: none !important; padding: 0 !important; }
+#dial .hint { padding: 2px 6px; background: var(--chip); color: var(--muted); }
+#radio .emoji { display: none; }
+@media (max-width: 600px) {
+  #radio .boom-art, #dial .hint { display: none; }
+  #radio .emoji { display: inline-block; padding: 3px 7px; border: 1px solid var(--ink); background: var(--chip); font-size: 15px; line-height: 1.2; }
+  #radio.playing .emoji { animation: boom 0.48s steps(2) infinite; }
+}
+
+/* the station step: a see-through card, the big radio in the middle, the four names round
+   it in dial order (KMX169, Radio AlHara above; NTS 1, NTS 2 below) */
+#station-step {
+  pointer-events: auto; padding: 18px 22px 16px; border: 1px solid var(--ink);
+  background: color-mix(in srgb, var(--bg) 80%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+#station-step h2, #station-step .later, #back-weathers { background: none !important; padding: 0; }
+#station-step .picker { width: auto; margin-top: 4px; }
+#stations { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "kmx169 alhara" "radio radio" "nts1 nts2"; gap: 10px 12px; width: auto; justify-items: stretch; }
+#stations .big-radio { grid-area: radio; justify-self: center; padding: 6px 0; }
+#stations .big-radio svg { display: block; width: 276px; height: auto; }
+#stations .big-radio .key { cursor: pointer; }
+#stations .big-radio .needle { transition: transform 0.35s cubic-bezier(.3,1.6,.5,1); }
+#stations button { justify-content: center; text-align: center; padding: 10px 12px; }
+#stations button[data-station="kmx169"] { grid-area: kmx169; }
+#stations button[data-station="alhara"] { grid-area: alhara; }
+#stations button[data-station="nts1"] { grid-area: nts1; }
+#stations button[data-station="nts2"] { grid-area: nts2; }
+@media (max-width: 600px) {
+  #station-step { padding: 14px 12px 12px; }
+  #stations .big-radio svg { width: 230px; }
+}
+/* the radio flying up to now playing */
+.flying-radio { position: fixed; z-index: 20; transform-origin: 0 0; pointer-events: none; image-rendering: pixelated; }

@@ -10,6 +10,7 @@ import { buildHill } from './hill.js';
 import { HAMSA, HAMSA_INK } from './hamsa.js';
 import { mountAquarium } from './aquarium.js';
 import { startLog } from './listenlog.js';
+import { mountBoombox } from './boombox.js';
 import { catFrames, frameCanvas } from './pixelcat.js';
 import { speak } from './catspeak.js';
 import { makeTheyyam } from './theyyam.js';
@@ -354,6 +355,7 @@ function label(at) {
 
 function tune() {
   const at = onAir(Date.now());
+  if (outside()) return labelStation(); // a live station: nothing to schedule, seek or correct
   label(at);
   if (!listening) return;
   if (!at) return audio.pause();
@@ -379,6 +381,7 @@ for (const [event, state] of [['playing', 'playing'], ['pause', 'paused']]) {
 }
 
 audio.addEventListener('ended', () => {
+  if (outside()) return stalled(); // a live stream shouldn't end
   // If our copy of the song ended a moment early, wait for the broadcast to catch up.
   const at = onAir(Date.now());
   if (at && at.track.file === audio.dataset.file && at.offset > at.track.seconds - 2) {
@@ -390,6 +393,101 @@ audio.addEventListener('ended', () => {
 });
 
 setInterval(tune, 4000);
+
+// --- the dial: KMX169 (the kitchen's own schedule, everyone in sync) or an outside live
+// station, playing right here. Tap the boombox to turn it one click. ---
+const STATIONS = [
+  { id: 'kmx169', name: 'KMX169', key: 'K' },
+  { id: 'alhara', name: 'Radio AlHara', key: 'A', url: 'https://stream.radioalhara.net/ra', site: 'https://www.radioalhara.net/', siteName: 'radioalhara.net' },
+  { id: 'nts1', name: 'NTS 1', key: '1', nts: '1', url: 'https://stream-relay-geo.ntslive.net/stream?client=direct', site: 'https://www.nts.live/', siteName: 'nts.live' },
+  { id: 'nts2', name: 'NTS 2', key: '2', nts: '2', url: 'https://stream-relay-geo.ntslive.net/stream2?client=direct', site: 'https://www.nts.live/', siteName: 'nts.live' },
+];
+let dial = 0;
+const outside = () => (dial > 0 ? STATIONS[dial] : null);
+const boombox = mountBoombox($('radio'), STATIONS.map((s) => s.key));
+let ntsShows = {}; // NTS channel -> the show on now, from their live API
+let retried = false;
+
+function drawDial() {
+  boombox.set(dial, listening && !audio.paused);
+  const next = STATIONS[(dial + 1) % STATIONS.length];
+  $('radio').dataset.log = `station: ${next.id}`; // the listening log counts which station a tap turns to
+  $('radio').setAttribute('aria-label', `the radio: on ${STATIONS[dial].name}; tap for ${next.name}`);
+}
+for (const event of ['playing', 'pause']) audio.addEventListener(event, drawDial);
+
+// Under now playing: which station, with a link to an outside one's own site.
+function creditLine() {
+  const s = outside();
+  const credit = $('credit');
+  if (s) { credit.href = s.site; credit.textContent = `${s.name}, live from ${s.siteName}`; }
+  else { credit.removeAttribute('href'); credit.textContent = "on KMX169, the kitchen's own station"; }
+  credit.hidden = !listening;
+}
+
+function labelStation() {
+  const s = outside();
+  const showName = s.nts ? ntsShows[s.nts] : null;
+  show($('onair'), `now playing: ${s.name}${showName ? ` – ${showName}` : ''}`);
+  creditLine();
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: showName || s.name, artist: s.name, album: STATION });
+  }
+}
+
+async function readNts() {
+  try {
+    const data = await fetch('https://www.nts.live/api/v2/live', { cache: 'no-store' }).then((r) => r.json());
+    ntsShows = Object.fromEntries(data.results.map((r) => [r.channel_name, r.now?.broadcast_title]));
+  } catch { ntsShows = {}; } // no show names then, just the channel
+  if (outside()?.nts) labelStation();
+}
+setInterval(() => { if (listening && outside()?.nts) readNts(); }, 60 * 1000);
+
+function playStation() {
+  const s = outside();
+  audio.dataset.file = ''; // so the kitchen reloads its song at the shared spot when we come back
+  audio.src = s.url;
+  audio.play().catch(() => show($('notice'), `tap the radio again to start ${s.name}`));
+}
+
+// A station that fails or stalls: wait a moment, try once more, then say so.
+let stallTimer = null;
+function stalled() {
+  const s = outside();
+  if (!s || !listening || stallTimer) return;
+  const from = audio.currentTime;
+  stallTimer = setTimeout(() => {
+    stallTimer = null;
+    if (outside() !== s || (!audio.paused && audio.currentTime > from + 1)) return; // it's moving: fine
+    if (!retried) { retried = true; playStation(); return; }
+    show($('notice'), `${s.name} isn't coming through right now. Turn the dial for another.`);
+  }, 4000);
+}
+audio.addEventListener('error', stalled);
+audio.addEventListener('stalled', stalled);
+audio.addEventListener('waiting', stalled);
+audio.addEventListener('playing', () => { retried = false; clearTimeout(stallTimer); stallTimer = null; show($('notice'), ''); });
+
+$('radio').addEventListener('click', () => {
+  if (!listening) return;
+  dial = (dial + 1) % STATIONS.length;
+  retried = false;
+  clearTimeout(stallTimer);
+  stallTimer = null;
+  show($('notice'), '');
+  if (outside()) {
+    playStation(); // inside the tap, or phones won't start it
+    labelStation();
+    if (outside().nts) readNts();
+  } else {
+    creditLine();
+    audio.dataset.file = '';
+    tune(); // back to the kitchen, in step with everyone
+  }
+  drawDial();
+});
+drawDial();
 setInterval(() => loadTracks().catch(console.error), 10 * 60 * 1000); // pick up tomorrow's songs
 
 // --- the five weathers: who's in the kitchen right now ---
@@ -397,6 +495,8 @@ setInterval(() => loadTracks().catch(console.error), 10 * 60 * 1000); // pick up
 const me = sessionStorage.getItem('kw-id') || crypto.randomUUID();
 sessionStorage.setItem('kw-id', me);
 let myWeather = null;
+// ?quiet on this Mac: enter without showing up in the live kitchen (for testing)
+const QUIET = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has('quiet');
 let mySince = 0;
 
 const channel = supabase.channel('kuechenwetter', { config: { presence: { key: me } } });
@@ -444,23 +544,91 @@ for (const weather of WEATHERS) {
   button.type = 'button';
   button.dataset.weather = weather;
   button.append(Object.assign(document.createElement('span'), { textContent: weather }), document.createElement('small'));
-  button.addEventListener('click', () => enter(weather));
+  button.addEventListener('click', () => pickWeather(weather));
   $('weathers').appendChild(button);
 }
 
-function enter(weather) {
+// Step two: which station, on the big radio. KMX169 is the kitchen's own; the others are
+// live from elsewhere.
+const bigRadio = mountBoombox($('stations').querySelector('.big-radio'), STATIONS.map((s) => s.key));
+bigRadio.set(0, false);
+bigRadio.keys.forEach((key, index) => {
+  key.addEventListener('click', () => enter(chosenWeather, index));
+  key.addEventListener('pointerenter', () => bigRadio.set(index, false));
+});
+STATIONS.forEach((station, index) => {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.dataset.station = station.id;
+  button.dataset.log = `station: ${station.id}`;
+  for (const event of ['pointerenter', 'focus']) button.addEventListener(event, () => bigRadio.set(index, false)); // the needle goes to it
+  button.textContent = station.name;
+  button.addEventListener('click', () => enter(chosenWeather, index));
+  $('stations').appendChild(button);
+});
+let chosenWeather = null;
+function step(two) {
+  for (const id of ['choose', 'weathers']) $(id).hidden = two;
+  $('weathers').parentElement.hidden = two;
+  $('station-step').hidden = !two;
+  // pixel Salvia moves over to whichever list is showing
+  (two ? $('stations') : $('weathers')).parentElement.prepend($('guide'));
+}
+function pickWeather(weather) {
   if (takenByOthers(weather)) return;
+  chosenWeather = weather;
+  show($('notice'), '');
+  step(true);
+}
+$('back-weathers').addEventListener('click', () => step(false));
+
+// The big radio flies up to its place by now playing.
+function flyRadio() {
+  const big = $('stations').querySelector('.big-radio svg');
+  const from = big.getBoundingClientRect();
+  if (!from.width) return;
+  const target = phone.matches ? $('radio').querySelector('.emoji') : $('radio').querySelector('.boom-art svg');
+  const clone = big.cloneNode(true);
+  clone.classList.add('flying-radio');
+  Object.assign(clone.style, { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px` });
+  document.body.append(clone);
+  $('dial').style.visibility = 'hidden';
+  setTimeout(() => { // once the page has laid out the radio's new place
+    const to = target.getBoundingClientRect();
+    const k = to.width / from.width;
+    const flight = clone.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${k})`, opacity: phone.matches ? 0 : 1 }],
+      { duration: 900, easing: 'cubic-bezier(.5,0,.2,1)' });
+    const land = () => { clone.remove(); $('dial').style.visibility = ''; };
+    flight.finished.then(land, land);
+    setTimeout(land, 1500); // whatever happens, it lands
+  });
+}
+
+function enter(weather, station = 0) {
+  const fromStep = !$('station-step').hidden;
+  if (!weather || takenByOthers(weather)) {
+    step(false);
+    if (weather) show($('notice'), `${weather} was taken a moment before you. choose another weather.`);
+    return;
+  }
+  dial = station;
   document.body.classList.remove('outside');
   myWeather = weather;
   mySince = Date.now();
   listening = true;
-  tune(); // start the sound inside the tap, or phones won't allow it
-  channel.track({ weather, since: mySince });
+  // start the sound inside the tap, or phones won't allow it
+  if (outside()) { playStation(); labelStation(); if (outside().nts) readNts(); } else { audio.dataset.file = ''; tune(); }
+  if (!QUIET) channel.track({ weather, since: mySince });
+  $('dial').hidden = false;
+  if (fromStep) flyRadio();
   $('threshold').hidden = true;
+  step(false);
   $('request').hidden = false;
   $('leave').hidden = false;
   show($('notice'), '');
   renderWeathers();
+  creditLine();
+  drawDial();
 }
 
 function stopListening() {
@@ -468,8 +636,13 @@ function stopListening() {
   document.body.classList.add('outside');
   myWeather = null;
   audio.pause();
+  dial = 0;
+  $('credit').hidden = true;
+  drawDial();
   channel.untrack();
   $('threshold').hidden = false;
+  $('dial').hidden = true;
+  step(false);
   $('request').hidden = true;
   $('leave').hidden = true;
 }
@@ -480,6 +653,13 @@ $('leave').addEventListener('click', () => { stopListening(); renderWeathers(); 
 // roams round the weather buttons: walks along the top and the bottom, sits beside one,
 // paws at it now and then ---
 document.body.classList.add('outside');
+// …and nothing but the weather and station steps answers a tap until you're in, even if the
+// styles that fade the rest haven't loaded
+for (const event of ['click', 'pointerdown', 'pointerup']) {
+  addEventListener(event, (e) => {
+    if (document.body.classList.contains('outside') && !e.target.closest?.('#threshold')) { e.preventDefault(); e.stopPropagation(); }
+  }, { capture: true });
+}
 (function guide() {
   const { frames } = catFrames();
   const el = $('guide');
@@ -500,8 +680,9 @@ document.body.classList.add('outside');
   };
   draw('sit');
   // the places she can be, in the picker's own pixels (the cat's top left corner)
+  const current = () => ($('station-step').hidden ? $('weathers') : $('stations'));
   function spots() {
-    const list = $('weathers');
+    const list = current();
     const W = list.offsetWidth;
     const H = list.offsetHeight;
     const cw = canvas.offsetWidth || 56;
@@ -520,7 +701,7 @@ document.body.classList.add('outside');
   // a walk round the outside of the buttons, never over them: via a corner (or two) if the
   // straight line would cross the list
   function route(from, to) {
-    const list = $('weathers');
+    const list = current();
     const W = list.offsetWidth;
     const H = list.offsetHeight;
     const cw = canvas.offsetWidth || 56;
@@ -569,7 +750,7 @@ document.body.classList.add('outside');
         // arrived: a sit, or (beside a button) a crouch and a paw at it
         action = goal.paw || Math.random() < 0.25 ? { kind: 'paw', from: now, face: goal.face } : { kind: 'sit', from: now, face: goal.face };
         restUntil = now + (action.kind === 'paw' ? 1600 : 1800 + Math.random() * 2500);
-        if (action.kind === 'paw' && Math.random() < 0.6) { says.textContent = speak('choose your weather'); says.classList.add('on'); }
+        if (action.kind === 'paw' && Math.random() < 0.6) { says.textContent = speak($('station-step').hidden ? 'choose your weather' : 'choose your station'); says.classList.add('on'); }
         goal = null;
       } else {
         at.x += (dx / dist) * step;
