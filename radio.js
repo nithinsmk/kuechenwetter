@@ -11,6 +11,7 @@ import { HAMSA, HAMSA_INK } from './hamsa.js';
 import { mountAquarium } from './aquarium.js';
 import { startLog } from './listenlog.js';
 import { mountBoombox } from './boombox.js';
+import { carveStone } from './stone.js';
 import { catFrames, frameCanvas } from './pixelcat.js';
 import { speak } from './catspeak.js';
 import { makeTheyyam } from './theyyam.js';
@@ -32,24 +33,45 @@ function show(el, text) {
 const stage = createStage($('stage'), { fit: 'fill' });
 const { controls, camera } = stage;
 
-// A slow sway across the photographed side. A full turn would show the back of the
-// drainer, which the phone never saw and which is mostly fog.
+// A slow sway across the photographed side, always round the cutlery holder. A full turn
+// would show the back of the drainer, which the phone never saw and which is mostly fog. In
+// a scan the height rises and dips too, and over the first few minutes it comes closer,
+// then breathes in and out a little.
 const SWAY_ANGLE = THREE.MathUtils.degToRad(28);
 const SWAY_PERIOD = 40; // seconds per full sway
-let sway = null; // { theta, t0 } while swaying
+const RISE = THREE.MathUtils.degToRad(11); // how far the height swings, as an angle
+const RISE_PERIOD = 30;
+let sway = null; // { theta, phi, radius, t0, roam } while swaying
 let resumeSway;
 
 function startSway() {
-  const offset = camera.position.clone().sub(controls.target);
-  sway = { theta: new THREE.Spherical().setFromVector3(offset).theta, t0: performance.now() };
+  const spherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+  sway = { theta: spherical.theta, phi: spherical.phi, radius: spherical.radius, t0: performance.now(), roam: showing !== 'hill' };
 }
 
 function swayFrame(time) {
   if (!sway) return;
-  const offset = camera.position.clone().sub(controls.target);
-  const spherical = new THREE.Spherical().setFromVector3(offset);
-  spherical.theta = sway.theta + SWAY_ANGLE * Math.sin(((time - sway.t0) / 1000) * (2 * Math.PI / SWAY_PERIOD));
-  camera.position.copy(controls.target).add(offset.setFromSpherical(spherical));
+  const t = (time - sway.t0) / 1000;
+  const spherical = new THREE.Spherical(sway.radius, sway.phi, sway.theta + SWAY_ANGLE * Math.sin(t * (2 * Math.PI / SWAY_PERIOD)));
+  if (sway.roam) {
+    // phi is measured from straight above, so up and down is a swing either way of where it began
+    spherical.phi = THREE.MathUtils.clamp(sway.phi + RISE * Math.sin(t * (2 * Math.PI / RISE_PERIOD)), 0.35, 1.45);
+    const closer = 0.62 + 0.38 * Math.exp(-t / 40); // in to about 60% of the start, mostly within a couple of minutes
+    spherical.radius = sway.radius * closer * (1 + 0.05 * Math.sin(t * (2 * Math.PI / 71)));
+  }
+  camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(spherical));
+  camera.lookAt(controls.target);
+}
+
+// Where the camera rests: a little above and in front of the cutlery holder (the scan's
+// focus), and the high view it first comes down from.
+function homeView(height = 'close') {
+  const target = controls.target0.clone();
+  const reach = controls.position0.distanceTo(target);
+  const dir = height === 'high' ? new THREE.Vector3(0.3, 1.6, 0.55) : new THREE.Vector3(0.55, 0.9, 1);
+  // close: the holder about a seventh of the screen's height (where the roam starts, then it
+  // drifts in); high: well above that, where the first visit comes down from
+  return { from: target.clone().add(dir.normalize().multiplyScalar(reach * (height === 'high' ? 2.3 : 1.27))).toArray(), to: target.toArray() };
 }
 
 // Salvia, the house cat, lives in whichever scan is showing (see salvia.js).
@@ -59,7 +81,10 @@ const salvia = makeSalvia({
   onTenPets: () => { hillUntil = Date.now() + 4 * 60 * 1000; showHill(); },
   onPurring: (on) => (on ? startPurr() : stopPurr()),
   // When she naps in the spoon corner, he sometimes comes and lies down beside her.
-  onTap: (what) => log.tap(what),
+  onTap: (what) => {
+    log.tap(what);
+    if (what?.startsWith('plant:')) startFollow('behind'); // she runs to eat it: the camera goes with her
+  },
   onGhostNap: () => { if (Math.random() < 0.5) callTheyyam('sleep'); },
   onHiss: hiss,
 });
@@ -68,22 +93,21 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) stopP
 // The hamsa: each tap swivels round to the figure's side of the counter and plays
 // the next of its scenes (for trying them out).
 const FIGURE_VIEW = { from: [-0.6, 0.36, 0.4], to: [-1.03, 0.07, -0.12] }; // the spoon corner by the dish rack
-const SPOON_WIDE = { from: [-0.08, 0.71, 1.02], to: [-1.03, 0.07, -0.12] }; // further back, the spoon corner still in the middle
 let zoomedIn = null; // set while the talisman has the camera up close
 function zoomOut() {
   clearTimeout(zoomedIn);
   zoomedIn = null;
-  flyTo(SPOON_WIDE, startSway);
+  flyTo(homeView(), startSway); // back to the holder
 }
 let flight = null;
-function flyTo(view, after = () => { resumeSway = setTimeout(startSway, 12000); }) {
+function flyTo(view, after = () => { resumeSway = setTimeout(startSway, 12000); }, ms = 1800) {
   sway = null;
   clearTimeout(resumeSway);
-  flight = { from: camera.position.clone(), to: new THREE.Vector3(...view.from), fromT: controls.target.clone(), toT: new THREE.Vector3(...view.to), t0: performance.now(), after };
+  flight = { from: camera.position.clone(), to: new THREE.Vector3(...view.from), fromT: controls.target.clone(), toT: new THREE.Vector3(...view.to), t0: performance.now(), after, ms };
 }
 const flyFrame = (time) => {
   if (!flight) return;
-  const k = Math.min(1, (time - flight.t0) / 1800);
+  const k = Math.min(1, (time - flight.t0) / flight.ms);
   const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
   camera.position.lerpVectors(flight.from, flight.to, e);
   controls.target.lerpVectors(flight.fromT, flight.toT, e);
@@ -162,7 +186,7 @@ function endFollow() {
   salvia.seen = true;
   controls.enabled = true;
   for (const b of document.querySelectorAll('[data-follow]')) { b.setAttribute('aria-pressed', 'false'); b.textContent = b.dataset.label; }
-  flyTo({ from: controls.position0.toArray(), to: controls.target0.toArray() }, startSway);
+  flyTo(homeView(), startSway);
 }
 function startFollow(mode) {
   if (!salvia.size) return;
@@ -178,7 +202,7 @@ for (const b of document.querySelectorAll('[data-follow]')) {
   b.dataset.label = b.textContent;
   b.addEventListener('click', () => (follow?.mode === b.dataset.follow ? endFollow() : startFollow(b.dataset.follow)));
 }
-$('view-reset').addEventListener('click', () => (follow ? endFollow() : flyTo({ from: controls.position0.toArray(), to: controls.target0.toArray() }, startSway)));
+$('view-reset').addEventListener('click', () => (follow ? endFollow() : flyTo(homeView(), startSway)));
 let lastFrame = 0;
 function followFrame(time) {
   const dt = Math.min(0.1, (time - lastFrame) / 1000);
@@ -246,6 +270,13 @@ function crisp() {
   stage.renderer.setSize(stage.renderer.domElement.clientWidth, stage.renderer.domElement.clientHeight, false);
 }
 
+let arrived = false; // has the opening descent happened yet
+let parked = false; // a scan is in, with the camera waiting high above it
+function descend() {
+  if (arrived || !parked) return;
+  arrived = true;
+  flyTo(homeView(), startSway, 5200);
+}
 async function display(item, label) {
   endFollow();
   show($('status'), `loading ${label}`);
@@ -256,7 +287,16 @@ async function display(item, label) {
     show($('status'), '');
     crisp();
     salvia.enter(shown, shown.userData.focus ?? new THREE.Sphere(new THREE.Vector3(...item.focus.center), item.focus.radius), item.plant, item.ghost);
-    startSway();
+    // The first time it waits high above, and comes down to the holder once you're in (or
+    // now, if you already are); another date goes straight to it. Then the slow roam round it.
+    if (!arrived) {
+      const high = homeView('high');
+      camera.position.set(...high.from);
+      controls.target.set(...high.to);
+      sway = null;
+      parked = true;
+      if (listening) descend();
+    } else flyTo(homeView(), startSway);
   } catch (error) {
     console.error(error);
     show($('status'), `couldn't load ${label}`);
@@ -568,7 +608,7 @@ STATIONS.forEach((station, index) => {
 });
 let chosenWeather = null;
 function step(two) {
-  for (const id of ['choose', 'weathers']) $(id).hidden = two;
+  for (const id of ['choose', 'weathers', 'scroll']) $(id).hidden = two;
   $('weathers').parentElement.hidden = two;
   $('station-step').hidden = !two;
   // pixel Salvia moves over to whichever list is showing
@@ -621,6 +661,7 @@ function enter(weather, station = 0) {
   if (!QUIET) channel.track({ weather, since: mySince });
   $('dial').hidden = false;
   if (fromStep) flyRadio();
+  descend(); // the camera comes down from above, the first time
   $('threshold').hidden = true;
   step(false);
   $('request').hidden = false;
@@ -769,6 +810,115 @@ for (const event of ['click', 'pointerdown', 'pointerup']) {
     }
     el.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
   }, 50);
+}());
+
+// --- the stone on the way in: what this is, in English, Arabic, Malayalam, Spanish and
+// Urdu in turn, a new one every 7 seconds; a tap on the stone turns to the next straight
+// away, and the names underneath go to that one ---
+const SCROLL = [
+  ['en', 'ltr', [
+    "Our flat's radio: tune in when you like, while you work or clean, and send songs I add each day.",
+    'Radio AlHara (Bethlehem) and NTS 1 and 2 are on the dial too. Best on a computer.',
+    'The wheel keeps our cleaning rota: when your task is done, move your clip. It turns every two weeks and shows the time left.']],
+  ['ar', 'rtl', [
+    'راديو شقّتنا: استمع متى شئت، وأنت تعمل أو تنظّف، وأرسل أغاني أضيفها كل يوم.',
+    'راديو الحارة (بيت لحم) و NTS 1 و 2 على المؤشّر أيضًا. أجمل على الكمبيوتر.',
+    'العجلة تحفظ جدول التنظيف: حين تنهي مهمّتك، حرّك مشبكك. تدور كل أسبوعين وتُظهر الوقت المتبقّي.']],
+  ['ml', 'ltr', [
+    'നമ്മുടെ ഫ്ലാറ്റിന്റെ റേഡിയോ: ജോലി ചെയ്യുമ്പോഴോ വൃത്തിയാക്കുമ്പോഴോ, ഇഷ്ടമുള്ളപ്പോൾ കേൾക്കൂ; പാട്ടുകൾ അയയ്ക്കൂ, ഞാൻ ദിവസവും ചേർക്കും.',
+    'റേഡിയോ അൽഹാര (ബെത്‌ലഹേം), NTS 1, 2 എന്നിവയും ഡയലിലുണ്ട്. കമ്പ്യൂട്ടറിലാണ് കൂടുതൽ നല്ലത്.',
+    'ചക്രം നമ്മുടെ വൃത്തിയാക്കൽ മുറ ഓർത്തുവയ്ക്കുന്നു: നിങ്ങളുടെ ജോലി കഴിഞ്ഞാൽ ക്ലിപ്പ് നീക്കൂ. രണ്ടാഴ്ച കൂടുമ്പോൾ അത് തിരിയും, ബാക്കിയുള്ള സമയം കാണിക്കും.']],
+  ['es', 'ltr', [
+    'La radio de nuestro piso: escúchala cuando quieras, mientras trabajas o limpias, y mándame canciones que añado cada día.',
+    'Radio AlHara (Belén) y NTS 1 y 2 también están en el dial. Mejor en un ordenador.',
+    'La rueda lleva nuestro turno de limpieza: cuando termines tu tarea, mueve tu pinza. Gira cada dos semanas y muestra el tiempo que queda.']],
+  ['ur', 'rtl', [
+    'ہمارے فلیٹ کا ریڈیو: جب چاہیں سنیں، کام کرتے یا صفائی کرتے ہوئے، اور گانے بھیجیں جو میں ہر روز شامل کرتی ہوں۔',
+    'ریڈیو الحارہ (بیت لحم) اور NTS 1 اور 2 بھی ڈائل پر ہیں۔ کمپیوٹر پر زیادہ اچھا لگتا ہے۔',
+    'پہیہ ہماری صفائی کی باری کا حساب رکھتا ہے: جب آپ کا کام ہو جائے، اپنی کلپ سرکائیں۔ یہ ہر دو ہفتے بعد گھومتا ہے اور باقی وقت دکھاتا ہے۔']],
+];
+const LANG_NAMES = { en: 'English', ar: 'العربية', ml: 'മലയാളം', es: 'Español', ur: 'اردو' };
+(function theStone() {
+  const stone = $('scroll').querySelector('.stone');
+  const paper = stone.querySelector('.paper');
+  const names = $('scroll').querySelector('.langs');
+  // the letters as big as will fit inside the carved oval, for whichever language is on; on
+  // a phone they never go below a readable size, and the words scroll through the face instead
+  const narrow = matchMedia('(max-width: 600px)');
+  function fit() {
+    const least = narrow.matches ? 11.5 : 8;
+    let size = 15;
+    paper.style.fontSize = `${size}px`;
+    while (paper.scrollHeight > paper.clientHeight + 1 && size > least) {
+      size -= 0.5;
+      paper.style.fontSize = `${size}px`;
+    }
+    paper.scrollTop = 0;
+    paper.classList.toggle('scrolls', paper.scrollHeight > paper.clientHeight + 1);
+    stone.classList.toggle('scrolls', paper.classList.contains('scrolls'));
+    shownAt = performance.now();
+  }
+  // the slow drift upward, like credits; a finger on it takes over for a while
+  let shownAt = performance.now();
+  let handsOn = 0;
+  let endAt = 0;
+  for (const event of ['touchstart', 'wheel', 'pointerdown']) paper.addEventListener(event, () => { handsOn = performance.now(); }, { passive: true });
+  setInterval(() => {
+    if (!paper.classList.contains('scrolls') || $('scroll').hidden) return;
+    const now = performance.now();
+    if (now - shownAt < 1500 || now - handsOn < 4000) return;
+    const before = paper.scrollTop;
+    paper.scrollTop += 0.7;
+    if (paper.scrollTop === before && !endAt) endAt = now; // reached the end
+  }, 50);
+  for (const [cls, way] of [['up', -1], ['down', 1]]) {
+    stone.querySelector(`.nudge.${cls}`).addEventListener('click', (e) => {
+      e.stopPropagation(); // not a tap on the stone (that changes the language)
+      handsOn = performance.now();
+      paper.scrollTop += way * paper.clientHeight * 0.6;
+    });
+  }
+  // read through yet? (a stone that scrolls turns once it's been to the end and rested)
+  const readThrough = () => !paper.classList.contains('scrolls') || (endAt && performance.now() - endAt > 2000);
+  addEventListener('resize', fit);
+  const canvas = stone.querySelector('.carving');
+  const carve = () => carveStone(canvas, matchMedia('(max-width: 600px)').matches);
+  carve();
+  matchMedia('(max-width: 600px)').addEventListener('change', carve);
+  requestAnimationFrame(fit);
+  document.fonts?.ready.then(fit);
+  let n = 0;
+  function turnTo(next) {
+    n = (next + SCROLL.length) % SCROLL.length;
+    const [lang, dir, lines] = SCROLL[n];
+    paper.classList.add('turning');
+    setTimeout(() => {
+      paper.lang = lang;
+      paper.dir = dir;
+      paper.querySelectorAll('p').forEach((p, k) => { p.textContent = lines[k]; });
+      fit();
+      paper.classList.remove('turning');
+    }, 300);
+    for (const b of names.children) b.setAttribute('aria-current', String(b.dataset.lang === lang));
+    endAt = 0;
+  }
+  // every 7 seconds (or, if it scrolls, once it's been read through) the next language
+  setInterval(() => {
+    if ($('scroll').hidden || !document.body.classList.contains('outside')) return;
+    if (performance.now() - shownAt >= 7000 && readThrough()) turnTo(n + 1);
+  }, 500);
+  SCROLL.forEach(([lang], k) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.lang = lang;
+    b.lang = lang;
+    b.textContent = LANG_NAMES[lang];
+    b.addEventListener('click', () => turnTo(k));
+    names.append(b);
+  });
+  stone.addEventListener('click', () => turnTo(n + 1));
+  stone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); turnTo(n + 1); } });
+  for (const b of names.children) b.setAttribute('aria-current', String(b.dataset.lang === 'en'));
 }());
 
 // --- on a phone: now playing, the wheel and the toys stay; the rest goes in the menu ---

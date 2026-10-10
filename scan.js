@@ -99,6 +99,7 @@ export function createStage(container, options = {}) {
     reset: () => controls.reset(),
     get current() { return current; },
     set onFrame(fn) { onFrame = fn; }, // called every frame, before the controls update
+    get onFrame() { return onFrame; },
     set paused(on) { paused = on; }, // stop drawing (while something covers the scene)
   };
 }

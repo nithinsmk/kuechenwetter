@@ -3,7 +3,8 @@
 // palm (cuttings in IKEA glasses of water), a monstera on a moss pole in terracotta, a
 // spider plant and a papyrus in glasses too, and a snake plant in a dark pot. Each is built
 // from voxels in a small palette and stands on the ground she walks on, a few times her
-// height. Each scene draws 4 or 5 of them (the same kind can come twice). When she eats one
+// height. Each visit draws 3 of them (the same kind can come twice), placed fresh, well
+// inside the table. When she eats one
 // its leaves go, chomp by chomp, and grow back later.
 import * as THREE from 'three';
 
@@ -646,26 +647,65 @@ export function makeBed(size) {
 // Plants go a little way out from the holder (or the hill's crest), spread apart,
 // on ground she can walk on. The same scene always gets the same garden.
 export function plantGarden(ground, key) {
-  const rng = seeded(key);
+  const rng = seeded(`${key}${Math.random()}`); // a new arrangement each visit
   const { size, holderAt, cells } = ground;
   const [hx, hz] = holderAt;
   // Keep the spoon corner (where the Theyyam comes) clear.
   const clear = (c) => !ground.ghost || Math.hypot(c[0] - ground.ghost[0], c[1] - ground.ghost[2]) > 0.5;
-  const ring = cells.filter((c) => {
+  // Well inside the table: every measured spot around it, two steps each way, is there and
+  // level with it, so nothing stands on an edge or off the counter.
+  const inside = (c, reach = 2) => {
+    if (!ground.grid) return true; // a scene that knows its own ground (the hill)
+    const i = Math.round((c[0] - ground.c.x) / ground.step);
+    const j = Math.round((c[1] - ground.c.z) / ground.step);
+    for (let di = -reach; di <= reach; di++) for (let dj = -reach; dj <= reach; dj++) {
+      const y = ground.grid.get(`${i + di},${j + dj}`);
+      if (y === undefined || Math.abs(y - c[2]) > size * 0.25) return false;
+    }
+    return Math.abs(c[2] - ground.floor) < size * 0.6;
+  };
+  const around = cells.filter((c) => {
     const d = Math.hypot(c[0] - hx, c[1] - hz);
     return d > size * 2.2 && d < size * 9 && clear(c);
   });
+  const safe = around.filter(inside);
+  const ring = safe.length >= 6 ? safe : around; // a scan with little clean table: take what there is
   // On the side facing the radio's default view (the scans are framed from this
-  // direction), so they're seen and tappable, and the same every visit.
+  // direction), so they're seen and tappable.
   const toCamera = new THREE.Vector2(0.55, 1).normalize();
   const seen = ring.filter((c) => new THREE.Vector2(c[0] - hx, c[1] - hz).normalize().dot(toCamera) > 0.25);
   const candidates = seen.length >= 12 ? seen : ring;
   const group = new THREE.Group();
+  // The mattress goes down first (it needs the most room), in view, away from the holder;
+  // the plants then fit round it.
+  let bed = null;
+  // it's wider than a plant: table all round it, as far as its corners reach
+  const matReach = ground.grid ? Math.ceil((size * 1.4) / ground.step) : 0;
+  const roomy = (c) => Math.hypot(c[0] - hx, c[1] - hz) > size * 3 && inside(c, matReach);
+  const spots = candidates.filter(roomy).length ? candidates.filter(roomy) : ring.filter(roomy).length ? ring.filter(roomy) : ring;
+  if (spots.length) {
+    const [x, z, y] = spots[Math.floor(rng() * spots.length)];
+    const made = makeBed(size);
+    const yaw = rng() * Math.PI * 2;
+    made.group.position.set(x, y, z);
+    made.group.rotation.y = yaw;
+    group.add(made.group);
+    // on it? (in its own frame) — so she lies on top rather than in it
+    const on = (px, pz) => {
+      const dx = px - x;
+      const dz = pz - z;
+      const lx = dx * Math.cos(yaw) - dz * Math.sin(yaw);
+      const lz = dx * Math.sin(yaw) + dz * Math.cos(yaw);
+      return Math.abs(lx) < made.w / 2 && Math.abs(lz) < made.d / 2;
+    };
+    bed = { x, z, y, get h() { return made.top(); }, on: (px, pz) => made.open && on(px, pz), update: made.update, visit: made.visit, onIt: on };
+  }
   const plants = [];
-  const count = rng() < 0.5 ? 4 : 5;
+  const count = 3;
   const kinds = Array.from({ length: count }, () => KINDS[Math.floor(rng() * KINDS.length)]);
   for (const kind of kinds) {
-    const apart = (c) => plants.every((p) => Math.hypot(c[0] - p.x, c[1] - p.z) > size * 2.6);
+    const apart = (c) => plants.every((p) => Math.hypot(c[0] - p.x, c[1] - p.z) > size * 2.6)
+      && (!bed || Math.hypot(c[0] - bed.x, c[1] - bed.z) > size * 2.4); // clear of the mattress
     let free = candidates.filter(apart);
     if (!free.length) free = ring.filter(apart); // no room in view: somewhere further round
     if (!free.length) break;
@@ -716,27 +756,6 @@ export function plantGarden(ground, key) {
         mesh.instanceMatrix.needsUpdate = true;
       },
     });
-  }
-  // The mattress goes down last, in view, clear of the plants.
-  let bed = null;
-  const roomy = (c) => plants.every((p) => Math.hypot(c[0] - p.x, c[1] - p.z) > size * 3) && Math.hypot(c[0] - hx, c[1] - hz) > size * 3;
-  const spots = candidates.filter(roomy).length ? candidates.filter(roomy) : ring.filter(roomy);
-  if (spots.length) {
-    const [x, z, y] = spots[Math.floor(rng() * spots.length)];
-    const made = makeBed(size);
-    const yaw = rng() * Math.PI * 2;
-    made.group.position.set(x, y, z);
-    made.group.rotation.y = yaw;
-    group.add(made.group);
-    // on it? (in its own frame) — so she lies on top rather than in it
-    const on = (px, pz) => {
-      const dx = px - x;
-      const dz = pz - z;
-      const lx = dx * Math.cos(yaw) - dz * Math.sin(yaw);
-      const lz = dx * Math.sin(yaw) + dz * Math.cos(yaw);
-      return Math.abs(lx) < made.w / 2 && Math.abs(lz) < made.d / 2;
-    };
-    bed = { x, z, y, get h() { return made.top(); }, on: (px, pz) => made.open && on(px, pz), update: made.update, visit: made.visit, onIt: on };
   }
   return { group, plants, bed };
 }

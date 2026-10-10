@@ -679,3 +679,66 @@ body.outside #guide { display: block; }
 }
 /* the radio flying up to now playing */
 .flying-radio { position: fixed; z-index: 20; transform-origin: 0 0; pointer-events: none; image-rendering: pixelated; }
+
+/* the carved stone on the way in: a pixel-art stone like an item in a 90s game, drawn on a
+   small canvas and scaled up unsmoothed; the words are cut into its top face, and it rocks
+   slowly in 3D */
+#scroll { width: min(560px, 100%); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; perspective: 900px; animation: stone-float 5s ease-in-out infinite; }
+#scroll .stone {
+  position: relative; width: 100%; aspect-ratio: 120 / 86; display: block;
+  pointer-events: auto; cursor: pointer; user-select: none;
+  transform-style: preserve-3d; animation: stone-rock 9s ease-in-out infinite;
+  filter: drop-shadow(0 12px 10px rgb(0 0 0 / 0.35));
+}
+#scroll .stone:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+#scroll .carving { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+/* the words sit in the middle of the face: a box whose corners stay inside the oval groove
+   (radio.js shrinks the letters until a language fits); a gold inscription with a hard dark edge */
+#scroll .paper { position: absolute; left: 22.5%; right: 22.5%; top: 21%; height: 46%; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: center; color: #f3d67e; font-weight: 700;
+  text-shadow: 1px 1px 0 #241e14, -1px 0 0 rgb(36 30 20 / 0.6), 0 -1px 0 rgb(36 30 20 / 0.6);
+  animation: inscribe 1.4s steps(12) 0.3s both; }
+#scroll p { margin: 5px 0; line-height: 1.35; text-align: center; transition: opacity 0.25s; }
+#scroll .paper.turning p { opacity: 0; }
+#scroll .langs { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; margin: 0; pointer-events: auto; font-size: 11px; }
+#scroll .langs button { padding: 1px 4px; color: var(--muted); opacity: 0.75; }
+#scroll .langs button[aria-current="true"] { color: var(--ink); opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+#scroll .langs button:hover { opacity: 1; color: var(--ink); }
+@keyframes inscribe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes stone-float { 50% { transform: translateY(-4px); } }
+@keyframes stone-rock { 0%, 100% { transform: rotateX(14deg) rotateY(-7deg); } 50% { transform: rotateX(10deg) rotateY(7deg); } }
+@media (prefers-reduced-motion: reduce) { #scroll, #scroll .stone, #scroll .paper { animation: none; } }
+@media (max-width: 600px) {
+  #scroll { width: min(320px, 100%); }
+  #scroll .stone { aspect-ratio: 120 / 104; }
+  #scroll .paper { left: 22%; right: 22%; }
+  #scroll p { margin: 2px 0; line-height: 1.3; }
+  /* the way in starts just under the header, rather than in the middle */
+  #threshold { top: calc(max(16px, env(safe-area-inset-top)) + 118px); transform: none; gap: 16px; }
+}
+body.clean #scroll { display: none; }
+@media (max-height: 740px) { #threshold { gap: 18px; } #scroll .paper { font-size: 12px; } #scroll p { margin: 3px 0; } }
+
+/* each script in its own typeface on the stone, with a lighter edge so the letters stay open */
+#scroll :lang(ar) { font-family: "Noto Naskh Arabic", serif; font-weight: 600; line-height: 1.6; }
+#scroll :lang(ur) { font-family: "Noto Nastaliq Urdu", serif; font-weight: 600; line-height: 2.1; }
+#scroll :lang(ml) { font-family: "Noto Sans Malayalam", sans-serif; font-weight: 600; line-height: 1.5; }
+#scroll .paper:lang(ar), #scroll .paper:lang(ur) { text-shadow: 1px 1px 0 #241e14; }
+#scroll .paper:lang(ar) p, #scroll .paper:lang(ur) p, #scroll .paper:lang(ml) p { line-height: inherit; }
+
+/* when the words are longer than the face (phones): they scroll, with soft fades top and bottom */
+#scroll .paper.scrolls { justify-content: flex-start; overflow-y: auto; scrollbar-width: none; touch-action: pan-y;
+  mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent); -webkit-mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent); }
+#scroll .paper.scrolls::-webkit-scrollbar { display: none; }
+#scroll .paper.scrolls p:first-child { margin-top: 14%; }
+#scroll .paper.scrolls p:last-child { margin-bottom: 14%; }
+
+/* the little triangles, at the right of the face, only when the words scroll */
+#scroll .nudge { position: absolute; right: 13%; display: none; width: 22px; height: 18px; padding: 0; z-index: 1;
+  color: #f3d67e; font-size: 11px; line-height: 18px; text-align: center; text-shadow: 1px 1px 0 #241e14;
+  background: rgb(36 30 20 / 0.45); border: 1px solid rgb(36 30 20 / 0.7); }
+#scroll .nudge.up { top: 24%; }
+#scroll .nudge.down { top: calc(64% - 18px); }
+#scroll .stone.scrolls .nudge { display: block; }
+#scroll .stone.scrolls .paper { right: 24%; }
+#scroll .nudge:active { transform: translateY(1px); }
