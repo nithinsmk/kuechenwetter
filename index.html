@@ -18,6 +18,8 @@
 </head>
 <body>
   <main id="stage" aria-label="3D scan of the dish drainer"></main>
+  <!-- until a weather is chosen, a veil over the kitchen so the picker comes first -->
+  <div id="veil" aria-hidden="true"></div>
 
   <header id="station">
     <h1>Küchenwetter</h1>
@@ -30,7 +32,11 @@
 
   <section id="threshold" aria-labelledby="choose">
     <h2 id="choose">choose your weather</h2>
-    <div id="weathers"></div>
+    <div class="picker">
+      <!-- pixel Salvia, sitting on the buttons and pawing at them (radio.js) -->
+      <span id="guide" aria-hidden="true"><canvas></canvas><span class="says"></span></span>
+      <div id="weathers"></div>
+    </div>
     <p id="outside" hidden>all five weathers are in the kitchen.<br>wait here; one will clear.</p>
     <p id="notice" role="status" hidden></p>
   </section>
@@ -131,6 +137,13 @@
       <p class="ps">P.S. The cutlery holder in the drainer (the Besteckkorb, the spoon thing, whatever you call it) is a social sculpture. We all make it together, without meaning to, every time we wash up. Look at it long enough and beauty starts leaking out of each thing in it. If you catch it in a good moment, scan it with your phone: <a href="https://poly.cam/" target="_blank" rel="noopener">Polycam</a> made the scans behind this letter, and <a href="https://www.kiriengine.app/" target="_blank" rel="noopener">KIRI Engine</a> works too. Both are free to start.</p>
     </div>
     <p class="radio-line">Küchenwetter is one radio for this kitchen: everyone hears the same song at the same moment, through five weathers a day.</p>
+    <form method="dialog"><button>close</button></form>
+  </dialog>
+
+  <!-- on a phone: everything but now playing, the wheel and the toys lives in here -->
+  <button type="button" id="menu-open" aria-haspopup="dialog" hidden>☰ menu</button>
+  <dialog id="menu" aria-label="menu">
+    <div class="menu-body"></div>
     <form method="dialog"><button>close</button></form>
   </dialog>
 

@@ -580,3 +580,42 @@ body.clean #toys { display: none !important; }
 @keyframes flash { from { opacity: 0.65; } to { opacity: 0; } }
 .theyyam-z { position: fixed; z-index: 4; transform: translate(-50%, -100%); pointer-events: none; padding: 0 4px; background: var(--chip); font-size: 11px; animation: z-rise 2.4s ease-out forwards; }
 @keyframes z-rise { to { translate: 6px -24px; opacity: 0; } }
+
+/* --- weather first: the veil, and pixel Salvia on the buttons --- */
+#veil { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 84%, transparent); opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
+body.outside #veil { opacity: 1; pointer-events: auto; }
+body.outside footer, body.outside #toys, body.outside .wheel-corner, body.outside #viewbar, body.outside #menu-open {
+  opacity: 0.12; pointer-events: none; filter: grayscale(0.8); transition: opacity 0.6s ease;
+}
+body.clean #veil, body.clean #guide { display: none; }
+.picker { position: relative; width: min(320px, 100%); display: flex; justify-content: center; }
+.picker #weathers { width: 100%; }
+#guide { position: absolute; left: 0; top: 0; display: none; pointer-events: none; z-index: 1; }
+body.outside #guide { display: block; }
+#guide canvas { display: block; width: 56px; image-rendering: pixelated; }
+@media (max-width: 600px) { #guide canvas { width: 46px; } }
+#guide .says { position: absolute; left: 0; bottom: 100%; padding: 2px 6px; background: var(--chip); white-space: nowrap; opacity: 0; transition: opacity 0.3s; }
+#guide .says.on { opacity: 1; }
+#threshold { gap: 34px; }
+#threshold h2 { margin-bottom: 0; }
+
+/* --- the phone menu --- */
+#menu-open {
+  position: fixed; left: 16px; bottom: max(16px, env(safe-area-inset-bottom));
+  padding: 6px 10px; border: 1px solid var(--ink); background: var(--chip); color: var(--ink);
+}
+#menu {
+  margin: auto auto 0; width: 100%; max-width: none; max-height: 82vh; overflow: auto;
+  border: 0; border-top: 1px solid var(--ink); padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+  background: var(--bg); color: var(--ink);
+}
+#menu::backdrop { background: rgb(0 0 0 / 0.25); }
+#menu .menu-body { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+#menu .menu-body > * { position: static; width: auto; margin: 0; }
+#menu #viewbar.under-wheel { position: static; width: auto; justify-content: flex-start; background: none; padding: 0; }
+#menu #weather, #menu #listeners { color: var(--muted); }
+#menu form[method="dialog"] button { padding: 4px 10px; border: 1px solid var(--ink); }
+@media (max-width: 600px) {
+  footer { display: none; }
+  #toys { transform: scale(0.82); transform-origin: right bottom; }
+}

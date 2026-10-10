@@ -10,6 +10,8 @@ import { buildHill } from './hill.js';
 import { HAMSA, HAMSA_INK } from './hamsa.js';
 import { mountAquarium } from './aquarium.js';
 import { startLog } from './listenlog.js';
+import { catFrames, frameCanvas } from './pixelcat.js';
+import { speak } from './catspeak.js';
 import { makeTheyyam } from './theyyam.js';
 import { crinkle, startPurr, stopPurr, hiss } from './sounds.js';
 
@@ -448,6 +450,7 @@ for (const weather of WEATHERS) {
 
 function enter(weather) {
   if (takenByOthers(weather)) return;
+  document.body.classList.remove('outside');
   myWeather = weather;
   mySince = Date.now();
   listening = true;
@@ -462,6 +465,7 @@ function enter(weather) {
 
 function stopListening() {
   listening = false;
+  document.body.classList.add('outside');
   myWeather = null;
   audio.pause();
   channel.untrack();
@@ -471,6 +475,141 @@ function stopListening() {
 }
 
 $('leave').addEventListener('click', () => { stopListening(); renderWeathers(); });
+
+// --- weather first: until one is chosen the kitchen waits under a veil, and pixel Salvia
+// roams round the weather buttons: walks along the top and the bottom, sits beside one,
+// paws at it now and then ---
+document.body.classList.add('outside');
+(function guide() {
+  const { frames } = catFrames();
+  const el = $('guide');
+  const canvas = el.querySelector('canvas');
+  const says = el.querySelector('.says');
+  const art = Object.fromEntries(['side0', 'side1', 'side2', 'side3', 'sit', 'crouch', 'pounce', 'front0', 'front1', 'back0', 'back1']
+    .map((name) => [name, frameCanvas(frames[name].rows)]));
+  let shown = '';
+  const draw = (name, flip) => {
+    if (shown !== name) {
+      const a = art[name];
+      canvas.width = a.width;
+      canvas.height = a.height;
+      canvas.getContext('2d').drawImage(a, 0, 0);
+      shown = name;
+    }
+    canvas.style.transform = flip ? 'scaleX(-1)' : ''; // her frames face right
+  };
+  draw('sit');
+  // the places she can be, in the picker's own pixels (the cat's top left corner)
+  function spots() {
+    const list = $('weathers');
+    const W = list.offsetWidth;
+    const H = list.offsetHeight;
+    const cw = canvas.offsetWidth || 56;
+    const ch = canvas.offsetHeight || 48;
+    const out = [];
+    for (let k = 0; k < 4; k++) out.push({ x: Math.random() * (W - cw), y: -ch + 6, face: Math.random() < 0.5 ? 1 : -1 }); // on top
+    out.push({ x: Math.random() * (W - cw), y: H - 2, face: Math.random() < 0.5 ? 1 : -1 }); // underneath
+    const room = list.getBoundingClientRect();
+    for (const b of list.children) { // beside a button, if there's room on that side of the screen
+      const y = b.offsetTop + b.offsetHeight - ch;
+      if (room.left > cw + 10) out.push({ x: -cw - 4, y, face: 1, paw: true });
+      if (innerWidth - room.right > cw + 10) out.push({ x: W + 4, y, face: -1, paw: true });
+    }
+    return out;
+  }
+  // a walk round the outside of the buttons, never over them: via a corner (or two) if the
+  // straight line would cross the list
+  function route(from, to) {
+    const list = $('weathers');
+    const W = list.offsetWidth;
+    const H = list.offsetHeight;
+    const cw = canvas.offsetWidth || 56;
+    const ch = canvas.offsetHeight || 48;
+    const over = (a, b) => {
+      for (let k = 1; k < 20; k++) {
+        const x = a.x + ((b.x - a.x) * k) / 20;
+        const y = a.y + ((b.y - a.y) * k) / 20;
+        if (x > -cw + 8 && x < W - 8 && y > -ch + 12 && y < H - 8) return true;
+      }
+      return false;
+    };
+    if (!over(from, to)) return [to];
+    const corners = [{ x: -cw - 4, y: -ch + 6 }, { x: W + 4, y: -ch + 6 }, { x: -cw - 4, y: H - 2 }, { x: W + 4, y: H - 2 }];
+    for (const c of corners) if (!over(from, c) && !over(c, to)) return [c, to];
+    for (const c of corners) for (const e of corners) if (!over(from, c) && !over(c, e) && !over(e, to)) return [c, e, to];
+    return [to];
+  }
+  let at = { x: 10, y: -42 };
+  let goal = null;
+  let path = [];
+  let restUntil = performance.now() + 1500;
+  let action = null;
+  let walked = 0;
+  let last = performance.now();
+  setInterval(() => {
+    const now = performance.now();
+    const dt = Math.min(0.2, (now - last) / 1000);
+    last = now;
+    if (!document.body.classList.contains('outside')) return;
+    if (!goal && !path.length && now > restUntil) {
+      const choices = spots();
+      path = route(at, choices[Math.floor(Math.random() * choices.length)]);
+    }
+    if (!goal && path.length) goal = path.shift();
+    if (goal) {
+      const dx = goal.x - at.x;
+      const dy = goal.y - at.y;
+      const dist = Math.hypot(dx, dy);
+      const step = 80 * dt; // px a second
+      if (dist <= step && path.length) { // a corner on the way: keep walking
+        at = { x: goal.x, y: goal.y };
+        goal = null;
+      } else if (dist <= step) {
+        at = { x: goal.x, y: goal.y };
+        // arrived: a sit, or (beside a button) a crouch and a paw at it
+        action = goal.paw || Math.random() < 0.25 ? { kind: 'paw', from: now, face: goal.face } : { kind: 'sit', from: now, face: goal.face };
+        restUntil = now + (action.kind === 'paw' ? 1600 : 1800 + Math.random() * 2500);
+        if (action.kind === 'paw' && Math.random() < 0.6) { says.textContent = speak('choose your weather'); says.classList.add('on'); }
+        goal = null;
+      } else {
+        at.x += (dx / dist) * step;
+        at.y += (dy / dist) * step;
+        walked += step;
+        const n = Math.floor(walked / 7) % 4;
+        if (Math.abs(dx) >= Math.abs(dy)) draw(`side${n}`, dx < 0);
+        else draw(dy > 0 ? `front${n % 2}` : `back${n % 2}`);
+        says.classList.remove('on');
+      }
+    } else if (action) {
+      const t = now - action.from;
+      if (action.kind === 'paw') draw(t < 400 ? 'crouch' : t < 1000 ? 'pounce' : 'sit', action.face < 0);
+      else draw('sit');
+      if (t > 2400) says.classList.remove('on');
+    }
+    el.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
+  }, 50);
+}());
+
+// --- on a phone: now playing, the wheel and the toys stay; the rest goes in the menu ---
+const phone = matchMedia('(max-width: 600px)');
+const homes = ['weather', 'listeners', 'request', 'links', 'work', 'dates', 'viewbar'].map((id) => {
+  const el = id === 'links' ? document.querySelector('footer .links') : $(id);
+  return { el, parent: el.parentElement, next: el.nextElementSibling };
+});
+function arrange() {
+  const body = $('menu').querySelector('.menu-body');
+  if (phone.matches) for (const { el } of homes) body.append(el);
+  else for (const { el, parent, next } of homes) parent.insertBefore(el, next && next.parentElement === parent ? next : null);
+  $('menu-open').hidden = !phone.matches;
+  if (!phone.matches && $('menu').open) $('menu').close();
+}
+arrange();
+phone.addEventListener('change', arrange);
+$('menu-open').addEventListener('click', () => $('menu').showModal());
+// going somewhere from the menu closes it (sending a request doesn't, so you see it went)
+$('menu').addEventListener('click', (e) => {
+  if (e.target === $('menu') || e.target.closest('a, #dates button, #viewbar button, #about-open, #leave')) $('menu').close();
+});
 window.addEventListener('pagehide', () => channel.untrack());
 
 // The duty wheel listens on the same channel, so it joins before we subscribe.

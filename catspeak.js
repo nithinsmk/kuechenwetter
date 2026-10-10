@@ -7,6 +7,7 @@ const NOM = { ar: '*هم هم*', es: '*ñam ñam*', ml: '*കറുമുറ*', 
 
 export const LINES = {
   // her own sounds
+  'choose your weather': { ar: 'اختر طقسك', es: 'elige tu clima', ml: 'നിന്റെ കാലാവസ്ഥ തിരഞ്ഞെടുക്കൂ', fr: 'choisis ta météo', ur: 'اپنا موسم چنو' },
   'meow': { ar: 'مياو', es: 'miau', ml: 'മ്യാവൂ', fr: 'miaou', ur: 'میاؤں' },
   'prrrr ♥': { ar: 'خرررر ♥', es: 'rrrrr ♥', ml: 'ർർർർ ♥', fr: 'ronron ♥', ur: 'خرّر ♥' },
   'prrrrrrr': { ar: 'خرررررر', es: 'rrrrrrr', ml: 'ർർർർർർ', fr: 'ronronron', ur: 'خرّرّر' },
