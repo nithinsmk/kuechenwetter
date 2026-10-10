@@ -223,9 +223,10 @@ function followFrame(time) {
   if (eyes) { // just in front of her face, looking where she looks, a touch down
     camAt.set(p[0] + fx * size * 0.45, p[1] + size * 0.8, p[2] + fz * size * 0.45);
     lookAt.set(p[0] + fx * size * 4, p[1] + size * 0.35, p[2] + fz * size * 4);
-  } else { // a little behind and above, looking at her
-    camAt.set(p[0] - fx * size * 3.2, p[1] + size * 1.6, p[2] - fz * size * 3.2);
-    lookAt.set(p[0] + fx * size * 0.6, p[1] + size * 0.5, p[2] + fz * size * 0.6);
+  } else { // behind and well above, looking down at her: the scan was shot from above, so seen
+    // from a low angle (the old 16 degrees) its blobs smear into streaks; from about 35 it holds
+    camAt.set(p[0] - fx * size * 3.6, p[1] + size * 3.4, p[2] - fz * size * 3.6);
+    lookAt.set(p[0] + fx * size * 0.6, p[1] + size * 0.4, p[2] + fz * size * 0.6);
   }
   const k = Math.min(1, dt * (eyes ? 9 : 4));
   camera.position.lerp(camAt, k);
