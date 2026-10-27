@@ -56,8 +56,9 @@ export function mountBoombox(button, keys) {
   return {
     keys: keyEls, // so a big one's buttons can be pressed
     // which station the dial is on, and whether sound is coming out
+    // (index -1: the needle rests at the scale's far left, no button pressed)
     set(index, playing) {
-      needleEl.style.transform = `translateX(${(KEYS[index] + 2) * PX}px)`;
+      needleEl.style.transform = `translateX(${(index < 0 ? 15 : KEYS[index] + 2) * PX}px)`;
       keyEls.forEach((el, k) => el.classList.toggle('down', k === index));
       button.classList.toggle('playing', playing);
     },

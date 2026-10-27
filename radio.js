@@ -395,6 +395,7 @@ function label(at) {
 }
 
 function tune() {
+  if (looping()) return labelSong(); // the song on loop: nothing to schedule either
   const at = onAir(Date.now());
   if (outside()) return labelStation(); // a live station: nothing to schedule, seek or correct
   label(at);
@@ -443,17 +444,22 @@ const STATIONS = [
   { id: 'nts1', name: 'NTS 1', key: '1', nts: '1', url: 'https://stream-relay-geo.ntslive.net/stream?client=direct', site: 'https://www.nts.live/', siteName: 'nts.live' },
   { id: 'nts2', name: 'NTS 2', key: '2', nts: '2', url: 'https://stream-relay-geo.ntslive.net/stream2?client=direct', site: 'https://www.nts.live/', siteName: 'nts.live' },
 ];
-let dial = 0;
+// Before the stations, the dial's far left: one song on loop, where everyone starts.
+const SONG = { id: 'nice', artist: 'Alabaster dePlume', title: 'Be Nice To People', file: 'alabaster-deplume-be-nice-to-people-1-48697c.mp3' };
+let dial = -1;
+const looping = () => dial === -1;
 const outside = () => (dial > 0 ? STATIONS[dial] : null);
+const nextDial = () => (dial === STATIONS.length - 1 ? -1 : dial + 1);
 const boombox = mountBoombox($('radio'), STATIONS.map((s) => s.key));
 let ntsShows = {}; // NTS channel -> the show on now, from their live API
 let retried = false;
 
 function drawDial() {
   boombox.set(dial, listening && !audio.paused);
-  const next = STATIONS[(dial + 1) % STATIONS.length];
+  const next = nextDial() === -1 ? SONG : STATIONS[nextDial()];
   $('radio').dataset.log = `station: ${next.id}`; // the listening log counts which station a tap turns to
-  $('radio').setAttribute('aria-label', `the radio: on ${STATIONS[dial].name}; tap for ${next.name}`);
+  const name = (d) => (d === -1 ? SONG.title : STATIONS[d].name);
+  $('radio').setAttribute('aria-label', `the radio: on ${name(dial)}; tap for ${name(nextDial())}`);
 }
 for (const event of ['playing', 'pause']) audio.addEventListener(event, drawDial);
 
@@ -461,7 +467,8 @@ for (const event of ['playing', 'pause']) audio.addEventListener(event, drawDial
 function creditLine() {
   const s = outside();
   const credit = $('credit');
-  if (s) { credit.href = s.site; credit.textContent = `${s.name}, live from ${s.siteName}`; }
+  if (looping()) { credit.removeAttribute('href'); credit.textContent = 'on loop in the kitchen · tap the radio for the stations'; }
+  else if (s) { credit.href = s.site; credit.textContent = `${s.name}, live from ${s.siteName}`; }
   else { credit.removeAttribute('href'); credit.textContent = "on KMX169, the kitchen's own station"; }
   credit.hidden = !listening;
 }
@@ -485,9 +492,27 @@ async function readNts() {
 }
 setInterval(() => { if (listening && outside()?.nts) readNts(); }, 60 * 1000);
 
+function labelSong() {
+  show($('onair'), `now playing: ${SONG.artist} – ${SONG.title}`);
+  show($('weather'), `the weather now: ${broadcast.plan().weather}`);
+  creditLine();
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: SONG.title, artist: SONG.artist, album: STATION });
+  }
+}
+
+function playSong() {
+  audio.dataset.file = ''; // so the kitchen reloads its song at the shared spot later
+  audio.loop = true;
+  audio.src = `${AUDIO_URL}${encodeURIComponent(SONG.file)}`;
+  audio.play().catch(() => show($('notice'), 'tap the radio to start the sound'));
+  labelSong();
+}
+
 function playStation() {
   const s = outside();
   audio.dataset.file = ''; // so the kitchen reloads its song at the shared spot when we come back
+  audio.loop = false;
   audio.src = s.url;
   audio.play().catch(() => show($('notice'), `tap the radio again to start ${s.name}`));
 }
@@ -512,17 +537,20 @@ audio.addEventListener('playing', () => { retried = false; clearTimeout(stallTim
 
 $('radio').addEventListener('click', () => {
   if (!listening) return;
-  dial = (dial + 1) % STATIONS.length;
+  dial = nextDial();
   retried = false;
   clearTimeout(stallTimer);
   stallTimer = null;
   show($('notice'), '');
-  if (outside()) {
-    playStation(); // inside the tap, or phones won't start it
+  if (looping()) {
+    playSong(); // inside the tap, or phones won't start it
+  } else if (outside()) {
+    playStation();
     labelStation();
     if (outside().nts) readNts();
   } else {
     creditLine();
+    audio.loop = false;
     audio.dataset.file = '';
     tune(); // back to the kitchen, in step with everyone
   }
@@ -619,7 +647,7 @@ function pickWeather(weather) {
   if (takenByOthers(weather)) return;
   chosenWeather = weather;
   show($('notice'), '');
-  step(true);
+  enter(weather, -1); // straight in, to the song on loop (the station step is paused)
 }
 $('back-weathers').addEventListener('click', () => step(false));
 
@@ -658,7 +686,8 @@ function enter(weather, station = 0) {
   mySince = Date.now();
   listening = true;
   // start the sound inside the tap, or phones won't allow it
-  if (outside()) { playStation(); labelStation(); if (outside().nts) readNts(); } else { audio.dataset.file = ''; tune(); }
+  if (looping()) playSong();
+  else if (outside()) { playStation(); labelStation(); if (outside().nts) readNts(); } else { audio.loop = false; audio.dataset.file = ''; tune(); }
   if (!QUIET) channel.track({ weather, since: mySince });
   $('dial').hidden = false;
   if (fromStep) flyRadio();
@@ -678,7 +707,7 @@ function stopListening() {
   document.body.classList.add('outside');
   myWeather = null;
   audio.pause();
-  dial = 0;
+  dial = -1;
   $('credit').hidden = true;
   drawDial();
   channel.untrack();
